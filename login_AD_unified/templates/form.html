@@ -1,0 +1,358 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Create SQL Login</title>
+    <script src="{{ url_for('static', filename='js/jquery-3.6.0.min.js') }}"></script>
+    <style>
+      /* --- Include the full CSS from the modern UI --- */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background-color: #f4f4f4;
+        min-height: 100vh;
+        padding: 30px;
+      }
+
+      .main-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+      }
+
+      .header-section {
+        background: linear-gradient(135deg, #333333, #444);
+        color: white;
+        padding: 40px 50px;
+        text-align: center;
+      }
+
+      .header-section h1 {
+        font-size: 2.5rem;
+        font-weight: 300;
+        margin-bottom: 10px;
+        letter-spacing: 1px;
+      }
+
+      .form-section {
+        padding: 50px;
+      }
+
+      .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 35px 40px;
+        margin-bottom: 40px;
+      }
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .form-group.full-width {
+        grid-column: 1 / -1;
+      }
+
+      label {
+        color: #333;
+        font-weight: 600;
+        margin-bottom: 10px;
+        font-size: 1rem;
+        text-transform: uppercase;
+      }
+
+      input[type="text"],
+      select {
+        padding: 16px 20px;
+        border: 2px solid #e0e6ed;
+        border-radius: 8px;
+        font-size: 1.1rem;
+        background: #fff;
+        color: #444;
+        transition: all 0.3s ease;
+      }
+
+      input[readonly] {
+        background: #f8f9fa;
+        color: #6c757d;
+        border-color: #dee2e6;
+      }
+
+      select {
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3csvg fill='none' stroke='currentColor' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' viewBox='0 0 24 24'%3e%3cpolyline points='6 9 12 15 18 9'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 1rem center;
+        background-size: 1.25rem;
+        padding-right: 3rem;
+      }
+
+      .submit-section {
+        border-top: 2px solid #fff;
+        padding: 30px 50px;
+       
+        text-align: center;
+      }
+
+      .submit-button {
+        background: linear-gradient(135deg, #4caf50, #389e3c);
+        color: white;
+        padding: 18px 60px;
+        border: none;
+        border-radius: 8px;
+        font-size: 1.2rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: 0.3s ease;
+        text-transform: uppercase;
+      }
+
+      .login-exists-warning {
+        color: #e74c3c;
+        font-size: 0.9rem;
+        margin-top: 8px;
+        font-weight: 500;
+        display: none;
+        background: #fdf2f2;
+        padding: 10px 15px;
+        border-radius: 6px;
+        border-left: 4px solid #e74c3c;
+      }
+
+      .message {
+        margin: 30px 50px;
+        padding: 20px 25px;
+        border-radius: 8px;
+        font-weight: 500;
+        display: none;
+        align-items: center;
+        font-size: 1.1rem;
+      }
+
+      .message.success {
+        background: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+        border-left: 5px solid #4caf50;
+      }
+
+      .message.error {
+        background: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+        border-left: 5px solid #dc3545;
+      }
+
+      .details {
+        margin: 30px 50px;
+        padding: 25px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border-left: 5px solid #4caf50;
+        display: none;
+        font-size: 1rem;
+      }
+
+      .details pre {
+        background: #333;
+        color: #ecf0f1;
+        padding: 15px;
+        border-radius: 6px;
+        overflow-x: auto;
+      }
+
+      @media (max-width: 768px) {
+        .form-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .header-section h1 {
+          font-size: 2rem;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="main-container">
+      <div class="header-section">
+        <h1>Create SQL Login</h1>
+        <p>Database Access Management System</p>
+      </div>
+
+      <div class="form-section">
+        <form id="create-login-form">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="server_name">Server Name</label>
+              <input type="text" id="server_name" name="server_name" required />
+            </div>
+
+            <div class="form-group">
+              <label for="database_name">Target Database for Login</label>
+              <select id="database_name" name="database_name" required>
+                <option value="">Select a database</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="login_name">Login Name</label>
+              <input type="text" id="login_name" name="login_name" required />
+              <div id="login-exists-message" class="login-exists-warning">
+                Login already exists.
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="user_name">User Name</label>
+              <input type="text" id="user_name" name="user_name" readonly />
+            </div>
+
+            <div class="form-group">
+              <label for="request_id">Request ID</label>
+              <input type="text" id="request_id" name="request_id" required />
+            </div>
+
+            <div class="form-group">
+              <label for="application">Application</label>
+              <input type="text" id="application" name="application" required />
+            </div>
+
+            <div class="form-group">
+              <label for="environment">Environment</label>
+              <select id="environment" name="environment" required>
+                <option value="">Select Environment</option>
+                <option value="Test">Test</option>
+                <option value="Prod">Prod</option>
+                <option value="Dev">Dev</option>
+              </select>
+            </div>
+
+            <div class="form-group full-width">
+              <label for="reason">Reason for Creating Login</label>
+              <input type="text" id="reason" name="reason" required />
+            </div>
+          </div>
+
+          <div class="submit-section">
+            <button type="submit" class="submit-button">Create Login</button>
+          </div>
+        </form>
+
+        <div id="message" class="message"></div>
+        <div id="login-details" class="details"></div>
+      </div>
+    </div>
+
+    <script>
+      $('#server_name').on('change', function () {
+        let serverName = $(this).val();
+        if (serverName) {
+          $.ajax({
+            url: '/fetch_databases',
+            method: 'POST',
+            data: { server: serverName },
+            success: function (response) {
+              $('#database_name').empty();
+              $('#database_name').append('<option value="">Select a database</option>');
+              $.each(response.databases, function (index, dbName) {
+                $('#database_name').append('<option value="' + dbName + '">' + dbName + '</option>');
+              });
+            }
+          });
+        }
+      });
+
+      $('#login_name').on('blur', function () {
+        let loginName = $(this).val();
+        let serverName = $('#server_name').val();
+        if (loginName && serverName) {
+          $.ajax({
+            url: '/check-login-exists',
+            method: 'POST',
+            data: { login_name: loginName, server_name: serverName },
+            success: function (response) {
+              if (response.exists) {
+                $('#login-exists-message').show();
+              } else {
+                $('#login-exists-message').hide();
+              }
+            }
+          });
+        }
+      });
+
+      $('#login_name').on('input', function () {
+        let loginName = $(this).val();
+        $('#user_name').val(loginName);
+      });
+
+      $('#create-login-form').on('submit', function (e) {
+        e.preventDefault();
+        $.ajax({
+          url: '/create-login',
+          method: 'POST',
+          data: $(this).serialize(),
+          success: function (response) {
+            let messageDiv = $('#message');
+            let detailsDiv = $('#login-details');
+            messageDiv.show();
+
+            if (response.message) {
+              messageDiv.removeClass('error').addClass('message success').html('✔️ ' + response.message);
+              detailsDiv.html('<strong>Login Name:</strong> ' + response.login_name);
+              if (response.powershell_output) {
+                detailsDiv.append('<br><strong>PowerShell Output:</strong> <pre>' + response.powershell_output + '</pre>');
+              }
+              detailsDiv.show();
+            } else if (response.error) {
+              messageDiv.removeClass('success').addClass('message error').html('❌ ' + response.error);
+              detailsDiv.hide();
+            }
+          }
+        });
+      });
+    </script>
+        <script>
+  window.addEventListener('beforeunload', function () {
+    const data = JSON.stringify({
+      page: window.location.pathname,
+      timestamp: new Date().toISOString()
+    });
+
+    // 👇 This is CRITICAL: content type must be application/json
+    const blob = new Blob([data], { type: 'application/json' });
+    navigator.sendBeacon('/log-exit', blob);
+  });
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const now = new Date().toISOString();
+    const page = window.location.pathname;
+
+    fetch('/log-entry', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            page: page,
+            timestamp: now
+        })
+    });
+});
+</script>
+
+
+  </body>
+</html>
