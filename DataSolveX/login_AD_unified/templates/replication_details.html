@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SQL Replication Dashboard</title>
+ 
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  />
+  <link
+    rel="stylesheet"
+    href="{{ url_for('static', filename='replication.css') }}"
+  />
+</head>
+<body>
+  <div class="navbar">
+    <h2>SQL Replication Dashboard</h2>
+    <div>
+      <a href="{{ url_for('dashboard') }}">Details</a>
+      <a href="{{ url_for('dashboard_summary') }}">Summary</a>
+      <a
+        href="{{ url_for('dashboard') }}"
+        onclick="location.reload(); return false;"
+        class="btn btn-light btn-sm text-primary fw-bold"
+      >
+        Refresh
+      </a>
+    </div>
+  </div>
+ 
+
+  <div class="content">
+    <div class="section-header">
+        <h2 class="section-title">Replication Details</h2>
+    </div>
+
+    <div class="table-container">
+      <div class="filters-row">
+        <input
+          type="text"
+          id="publication_name_filter"
+          class="filter-input"
+          placeholder="Filter by Publication Name"
+          onkeyup="filterTable()"
+        />
+        <input
+          type="text"
+          id="article_filter"
+          class="filter-input"
+          placeholder="Filter by Article"
+          onkeyup="filterTable()"
+        />
+      </div>
+
+      
+      {{ table | safe }}
+    </div>
+  </div>
+
+ 
+ 
+  <script>
+    // Jinja injects these as plain numbers
+    const PUB_COL_INDEX =  Number('{{ pub_col_index }}');
+    const ART_COL_INDEX = Number('{{ art_col_index }}');
+ 
+    function filterTable() {
+      const pubFilter = document
+        .getElementById("publication_name_filter")
+        .value.toLowerCase();
+      const artFilter = document
+        .getElementById("article_filter")
+        .value.toLowerCase();
+      const table = document.getElementById("sql_table");
+      if (!table) return;
+ 
+      const rows = table.getElementsByTagName("tr");
+ 
+      // start from 1 to skip header
+      for (let i = 1; i < rows.length; i++) {
+        const cells = rows[i].getElementsByTagName("td");
+        const tdPub = cells[PUB_COL_INDEX];
+        const tdArt = cells[ART_COL_INDEX];
+ 
+        let showRow = true;
+ 
+        if (
+          tdPub &&
+          pubFilter &&
+          tdPub.innerText.toLowerCase().indexOf(pubFilter) === -1
+        ) {
+          showRow = false;
+        }
+ 
+        if (
+          tdArt &&
+          artFilter &&
+          tdArt.innerText.toLowerCase().indexOf(artFilter) === -1
+        ) {
+          showRow = false;
+        }
+ 
+        rows[i].style.display = showRow ? "" : "none";
+      }
+    }
+  </script>
+ 
+  <script>
+  window.addEventListener('beforeunload', function () {
+    const data = JSON.stringify({
+      page: window.location.pathname,
+      timestamp: new Date().toISOString()
+    });
+ 
+    const blob = new Blob([data], { type: 'application/json' });
+    navigator.sendBeacon('/log-exit', blob);
+  });
+</script>
+ 
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const now = new Date().toISOString();
+    const page = window.location.pathname;
+ 
+    fetch('/log-entry', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        page: page,
+        timestamp: now
+      })
+    });
+  });
+</script>
+ 
+</body>
+</html>
