@@ -19,10 +19,6 @@ import time
 from flask import template_rendered
 from flask import has_request_context
 from threading import local
-<<<<<<< HEAD
-import pandas as pd
-=======
->>>>>>> 65cccd69b1c3b8e2941f4aada0208c2a0db22d90
 
 IST = timezone(timedelta(hours=5, minutes=30 ))
 
@@ -338,10 +334,6 @@ def dbrefresh():
     return render_template('dbpage.html')
 
 
-<<<<<<< HEAD
-
-=======
->>>>>>> 65cccd69b1c3b8e2941f4aada0208c2a0db22d90
 # Helper: Get client IP
 def get_user_ip():
     forwarded = request.environ.get('HTTP_X_FORWARDED_FOR')
@@ -3887,96 +3879,11 @@ def database_page():
     return render_template('page1.html', server=server_name, database=database_name,script_name2=script_name2,script_name=script_name,script_name3=script_name3, script_name4=script_name4,script_name5=script_name5,script_name6=script_name6,script_name7=script_name7,script_name8=script_name8)
 
 
-<<<<<<< HEAD
-REPL_CONN_STR = (
-    "DRIVER={ODBC Driver 17 for SQL Server};"
-    "SERVER=ISCLSCDBT9\\DIST;"
-    "DATABASE=distribution;"
-    "Trusted_Connection=yes;"
-)
- 
-def get_replication_connection():
-    return pyodbc.connect(REPL_CONN_STR)
- 
-@app.route('/replication_dashboard')
-def dashboard():
-    # Optional: protect with login like your other pages
-    if 'login_name' not in session:
-        return redirect(url_for('login'))
- 
-    sql_query = "SELECT * FROM Get_Replication_details"
- 
-    # Get replication data
-    with get_replication_connection() as conn:
-        df = pd.read_sql(sql_query, conn)
- 
-    # Get column indexes for filter JS
-    pub_col_index = df.columns.get_loc("publication_name")
-    art_col_index = df.columns.get_loc("article")
- 
-    # Render HTML table
-    detail_html = df.to_html(
-        classes='table table-hover',
-        index=False,
-        table_id="sql_table",
-        justify='left'
-    )
- 
-    return render_template(
-        'replication_details.html',
-        table=detail_html,
-        pub_col_index=pub_col_index,
-        art_col_index=art_col_index
-    )
- 
- 
-@app.route('/replication_dashboard/summary')
-def dashboard_summary():
-    if 'login_name' not in session:
-        return redirect(url_for('login'))
- 
-    sql_query = "SELECT * FROM Get_Replication_details"
- 
-    with get_replication_connection() as conn:
-        df = pd.read_sql(sql_query, conn)
- 
-    # Grouped summary
-    summary_df = (
-        df.groupby(
-            [
-                "publication_server",
-                "publisher_db",
-                "publication_name",
-                "subscription_server",
-                "subscriber_db",
-            ]
-        )
-        .agg(article_count=("article", "count"))
-        .reset_index()
-    )
- 
-    summary_html = summary_df.to_html(
-        classes='table table-hover',
-        index=False,
-        justify='left'
-    )
- 
-    return render_template(
-        'replication_summary.html',
-        summary_table=summary_html
-    )
-
-=======
->>>>>>> 65cccd69b1c3b8e2941f4aada0208c2a0db22d90
 
 
 # Run the Flask application
 if __name__ == '__main__':
     init_db()
-<<<<<<< HEAD
-    app.run(host='0.0.0.0', port=9099,debug='True')
-=======
     app.run(host='0.0.0.0', port=8099,debug='True')
->>>>>>> 65cccd69b1c3b8e2941f4aada0208c2a0db22d90
 
 #app.run(host='0.0.0.0', port=5000)

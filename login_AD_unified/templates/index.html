@@ -608,8 +608,7 @@
           transition: none !important;
         }
       }
-
-     
+      
     </style>
   </head>
   <body>
@@ -630,95 +629,127 @@
 
     <main>
       <div class="page-header">
-        <h2>SQL Server Solution Platform</h2>
+        <h2>Database Solution Platform</h2>
         <p>
-          All your Microsoft SQL Server solutions at one place. Stay ahead with
-          DataSturdy, your trusted SQL Server advisor.
+          Onestop solution for all the database related problems —powered by DataSturdy, your trusted
+          advisor.
         </p>
       </div>
 
       <div class="platforms-section">
-        <div class="section-label">Available SQL Server Modules</div>
+        <div class="section-label">Available Platforms</div>
         <div class="grid">
-          <a href="/dbrefresh" class="card">
+          <a href="{{ url_for('sqlserver_main') }}" class="card">
             <div class="status-indicator"></div>
             <img
-              src="{{ url_for('static', filename='star-svgrepo-com.svg') }}"
-              alt="Database Refresh"
+              src="{{ url_for('static', filename='microsoftsqlserver.svg') }}"
+              alt="SQL Server"
               class="card-icon"
             />
-            <div class="card-title">Database Refresh</div>
+            <div class="card-title">Microsoft SQL Server</div>
+          </a>
+          <a href="" class="card">
+            <div class="status-indicator"></div>
+            <img
+              src="{{ url_for('static', filename='mongodb.png') }}"
+              alt="MongoDB"
+              class="card-icon"
+            />
+            
+            <div class="card-title">MongoDB</div>
           </a>
 
-          <a href="/form" class="card">
+          <a href="" class="card">
             <div class="status-indicator"></div>
             <img
-              src="{{ url_for('static', filename='user-add-svgrepo-com.svg') }}"
-              alt="Security & Compliance"
+              src="{{ url_for('static', filename='mysql.png') }}"
+              alt="MySQL"
               class="card-icon"
             />
-            <div class="card-title">Logon creation</div>
+            <div class="card-title">MySQL</div>
           </a>
-<<<<<<< HEAD
 
-         
-          <a href="{{ url_for('dashboard') }}" class="card">
+          <a href="" class="card">
             <div class="status-indicator"></div>
             <img
-              src="{{ url_for('static', filename='connection-pattern-1105-svgrepo-com.svg') }}"
-              alt="Replication Dashboard"
+              src="{{ url_for('static', filename='postgresql.png') }}"
+              alt="PostgreSQL"
               class="card-icon"
             />
-            <div class="card-title">Replication Dashboard</div>
+            <div class="card-title">PostgreSQL</div>
           </a>
-=======
->>>>>>> 65cccd69b1c3b8e2941f4aada0208c2a0db22d90
+
+          <a href="" class="card">
+            <div class="status-indicator"></div>
+            <img
+              src="{{ url_for('static', filename='neo4j.png') }}"
+              alt="Oracle"
+              class="card-icon"
+            />
+
+            <div class="card-title">neo4j</div>
+          </a>
         </div>
       </div>
 
       <div class="coming-soon-section">
         <div class="section-label">Roadmap</div>
-        <h3>Upcoming Features & Enhancements</h3>
+        <h3>Upcoming Platform Support</h3>
         <p>
-          Deepen your SQL Server insights with upcoming modules covering
-          replication, user management, and advanced ETL automation. Rolling out
-          Q3-Q4 2025.
+          We're expanding our platform coverage to include additional database
+          technologies. Expected
+          availability in Q3-Q4 2025.
         </p>
 
         <div class="coming-soon-grid">
           <div class="coming-soon-card">
             <div class="coming-soon-badge">Q3</div>
             <img
-              src="{{ url_for('static', filename='account-svgrepo-com.svg') }}"
-              alt="Replication Synchronization Icon"
-              style="width: 48px; height: 48px"
+              src="{{ url_for('static', filename='amazondynamodb.png') }}"
+              alt="DynamoDB"
             />
-            <span>Replication Reinitialization</span>
+            <span>Amazon DynamoDB</span>
           </div>
 
           <div class="coming-soon-card">
             <div class="coming-soon-badge">Q3</div>
             <img
-              src="{{ url_for('static', filename='account-group-outlined-svgrepo-com.svg') }}"
-              alt="User Clone Icon"
-              style="width: 48px; height: 48px"
+              src="{{ url_for('static', filename='mariadb.png') }}"
+              alt="MariaDB"
             />
-            <span>User Cloning & Login Management</span>
+            <span>MariaDB</span>
           </div>
 
           <div class="coming-soon-card">
             <div class="coming-soon-badge">Q4</div>
             <img
-              src="{{ url_for('static', filename='connection-pattern-1105-svgrepo-com.svg') }}"
-              alt="ETL / SSIS Automation Icon"
-              style="width: 48px; height: 48px"
+              src="{{ url_for('static', filename='redis.png') }}"
+              alt="Redis"
             />
-            <span>SSIS Package Connection Updates</span>
+            <span>Redis</span>
+          </div>
+
+          <div class="coming-soon-card">
+            <div class="coming-soon-badge">Q4</div>
+            <img
+              src="{{ url_for('static', filename='apachecassandra.png') }}"
+              alt="Cassandra"
+            />
+            <span>Apache Cassandra</span>
+          </div>
+
+          <div class="coming-soon-card">
+            <div class="coming-soon-badge">Q4</div>
+            <img
+              src="{{ url_for('static', filename='couchbase.png') }}"
+              alt="Couchbase"
+            />
+            <span>Couchbase</span>
           </div>
         </div>
       </div>
     </main>
-   
+  
     <script>
   window.addEventListener('beforeunload', function () {
     const data = JSON.stringify({
