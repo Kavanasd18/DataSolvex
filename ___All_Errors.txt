@@ -1,12 +1,7 @@
-<<<<<<< HEAD
-CorrelationId: 61711118-9167-492d-9da5-d1c9b24cb07b
-UTC DateTime: 11/24/2025 07:16:34
-=======
-CorrelationId: 690d8bdf-f6c3-45cb-80d8-060f09340b86
-UTC DateTime: 11/12/2025 06:09:03
->>>>>>> 65cccd69b1c3b8e2941f4aada0208c2a0db22d90
+CorrelationId: 636a5780-eda0-4af6-b019-25996c070dce
+UTC DateTime: 11/26/2025 09:12:03
 
 The following files/folders have not been downloaded
-0. DataSolveX/login_AD_unified/templates/{{ url_for('second_index') }}
-1. DataSolveX/login_AD_unified/templates/dummy.txt
-2. DataSolveX/login_AD_unified/templates/extra.html
+0. DataSolvex/login_AD_unified/templates/{{ url_for('second_index') }}
+1. DataSolvex/login_AD_unified/templates/dummy.txt
+2. DataSolvex/login_AD_unified/templates/extra.html

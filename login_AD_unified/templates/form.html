@@ -192,57 +192,155 @@
 
       <div class="form-section">
         <form id="create-login-form">
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="server_name">Server Name</label>
-              <input type="text" id="server_name" name="server_name" required />
-            </div>
 
-            <div class="form-group">
-              <label for="database_name">Target Database for Login</label>
-              <select id="database_name" name="database_name" required>
-                <option value="">Select a database</option>
-              </select>
-            </div>
 
-            <div class="form-group">
-              <label for="login_name">Login Name</label>
-              <input type="text" id="login_name" name="login_name" required />
-              <div id="login-exists-message" class="login-exists-warning">
-                Login already exists.
-              </div>
-            </div>
 
-            <div class="form-group">
-              <label for="user_name">User Name</label>
-              <input type="text" id="user_name" name="user_name" readonly />
-            </div>
 
-            <div class="form-group">
-              <label for="request_id">Request ID</label>
-              <input type="text" id="request_id" name="request_id" required />
-            </div>
+<div class="form-grid">
+    <div class="form-group">
+      <label for="server_name">Server Name</label>
+      <input type="text" id="server_name" name="server_name" required />
+    </div>
 
-            <div class="form-group">
-              <label for="application">Application</label>
-              <input type="text" id="application" name="application" required />
-            </div>
+    <div class="form-group">
+      <label for="database_name">Target Database for Login</label>
+      <select id="database_name" name="database_name" required>
+        <option value="">Select a database</option>
+      </select>
+    </div>
 
-            <div class="form-group">
-              <label for="environment">Environment</label>
-              <select id="environment" name="environment" required>
-                <option value="">Select Environment</option>
-                <option value="Test">Test</option>
-                <option value="Prod">Prod</option>
-                <option value="Dev">Dev</option>
-              </select>
-            </div>
+    <div class="form-group">
+      <label for="login_name">Login Name</label>
+      <input type="text" id="login_name" name="login_name" required />
+      <div id="login-exists-message" class="login-exists-warning">
+        Login already exists.
+      </div>
+    </div>
 
-            <div class="form-group full-width">
-              <label for="reason">Reason for Creating Login</label>
-              <input type="text" id="reason" name="reason" required />
-            </div>
-          </div>
+    <div class="form-group">
+      <label for="user_name">User Name</label>
+      <input type="text" id="user_name" name="user_name" readonly />
+    </div>
+
+    <div class="form-group">
+      <label for="request_id">Request ID</label>
+      <input type="text" id="request_id" name="request_id" required />
+    </div>
+
+    <div class="form-group">
+      <label for="application">Application</label>
+      <input type="text" id="application" name="application" required />
+    </div>
+
+    <div class="form-group">
+      <label for="environment">Environment</label>
+      <select id="environment" name="environment" required>
+        <option value="">Select Environment</option>
+        <option value="Test">Test</option>
+        <option value="Prod">Prod</option>
+        <option value="Dev">Dev</option>
+      </select>
+    </div>
+
+    <!-- ------------------ NEW FIELDS ------------------ -->
+
+ <div class="form-group">
+  <label for="product">Product</label>
+  <select id="product" name="product" required>
+    <option value="">Select Product</option>
+    <option value="NON PRD sql id">NON PRD sql id</option>
+    <option value="NON PRD service account">NON PRD service account</option>
+    <option value="NON PRD NT ID">PNON PRD NT ID</option>
+    <option value="EPM unit account">EPM unit account</option>
+    <option value="NON PRD GMSA service account">NON PRD GMSA service account</option>
+    <option value="NON PRD user DL">NON PRD user DL</option>
+    <option value="PRD SQL ID">PRD SQL ID</option>
+    <option value="PRD service account">PRD service account</option>
+    <option value="PRD NT ID">PRD NT ID</option>
+    <option value="PRD GMSA service account">PRD GMSA service account</option>
+  </select>
+</div>
+
+<div class="form-group">
+  <label for="type">Type</label>
+  <select id="type" name="type" required>
+    <option value="">Select Type</option>
+<option value="Linked Server">Linked Server</option>
+<option value="Internal Linked server ">Internal Linked server </option>
+<option value="SA account">SA account</option>
+<option value="non PRD service account">non PRD service account</option>
+<option value="NT user">NT user</option>
+<option value="EPM unit">EPM unit</option>
+<option value="external DL">external DL</option>
+<option value="control m account">control m account</option>
+<option value="non prd gsma service account">non prd gsma service account</option>
+<option value="non prd scripter account">non prd scripter account</option>
+<option value="non prd SRA app  account">non prd SRA app  account</option>
+<option value="Group account">Group account</option>
+<option value="application team ">application team </option>
+<option value="Equest">Equest</option>
+<option value="Internal Linked server">Internal Linked server</option>
+<option value="SQL ID">SQL ID</option>
+<option value="SAP ID">SAP ID</option>
+<option value="PRD service account">PRD service account</option>
+<option value="PRD equest service account">PRD equest service account</option>
+<option value="PRD GMSA service account">PRD GMSA service account</option>
+<option value="PRD scripter  account">PRD scripter  account</option>
+<option value="db id">db id</option>
+<option value="CFG_Exception">CFG_Exception</option>
+<option value="CFG_ID">CFG_ID</option>
+<option value="Disabled,equest">Disabled,equest</option>
+<option value="Disabled">Disabled</option>
+<option value="non PRD gmsa service account">non PRD gmsa service account</option>
+<option value="PRD batch job account">PRD batch job account</option>
+<option value="non prd equest service account">non prd equest service account</option>
+<option value="schema">schema</option>
+  </select>
+</div>
+
+<div class="form-group">
+  <label for="ownership">Ownership</label>
+  <select id="ownership" name="ownership" required>
+    <option value="">Select Ownership</option>
+<option value="db team">db team</option>
+<option value="CFG Team">CFG Team</option>
+<option value="NT USER">NT USER</option>
+<option value="L1 team">L1 team</option>
+<option value="IS unit">IS unit</option>
+<option value="control m team">control m team</option>
+<option value="scripter team">scripter team</option>
+<option value="SRA team">SRA team</option>
+<option value="eQuest team">eQuest team</option>
+<option value="SAP team">SAP team</option>
+<option value="GMSA account">GMSA account</option>
+<option value="quality team">quality team</option>
+<option value="security team">security team</option>
+
+  </select>
+</div>
+
+    <div class="form-group">
+      <label for="owner_contact">Owner Contact</label>
+      <input type="text" id="owner_contact" name="owner_contact" />
+    </div>
+
+    <div class="form-group">
+      <label for="poc">POC (PM for Application)</label>
+      <input type="text" id="poc" name="poc" />
+    </div>
+
+    <!-- empty cell to keep grid aligned -->
+    <div></div>
+
+    <!-- ------------------ MOVED FIELD ------------------ -->
+<div class="form-group full-width">
+  <label for="reason">ID Information</label>
+  <input type="text" id="reason" name="reason" required placeholder="Reason for creating login" />
+</div>
+</div>
+
+
+
 
           <div class="submit-section">
             <button type="submit" class="submit-button">Create Login</button>

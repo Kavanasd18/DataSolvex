@@ -19,10 +19,7 @@ import time
 from flask import template_rendered
 from flask import has_request_context
 from threading import local
-<<<<<<< HEAD
 import pandas as pd
-=======
->>>>>>> 65cccd69b1c3b8e2941f4aada0208c2a0db22d90
 
 IST = timezone(timedelta(hours=5, minutes=30 ))
 
@@ -162,6 +159,11 @@ def create_login():
     environment = request.form['environment']
     reason = request.form['reason']  # New field for the reason for creating the login
     instance_name = server_name  # Automatically set instance_name to server_name
+    product = request.form['product']
+    Type = request.form['type']
+    ownership = request.form['ownership']
+    owner_contact = request.form['owner_contact']
+    POC = request.form['poc']
 
     # Generate the password
     password = generate_password()
@@ -192,7 +194,7 @@ def create_login():
         
         # 3rd connection: For inserting login details into the central database
         print(f"Connecting to central database: {central_db_name} on server: ISMGMTDBP2")
-        central_conn = pyodbc.connect(f'DRIVER={{SQL Server}};SERVER=ISMGMTDBP2;DATABASE={central_db_name};UID=EPMDBCCM;PWD=BujB8587*vvrwb')
+        central_conn = pyodbc.connect(f'DRIVER={{SQL Server}};SERVER=ISMGMTDBP02;DATABASE={central_db_name};UID=EPMDBCCM;PWD=BujB8587*vvrwb')
         central_cursor = central_conn.cursor()
 
         # Get the login_name from session (this is the actual logged-in user)
@@ -201,10 +203,10 @@ def create_login():
         print(f"Inserting login details into dbo.ID_repository_logindetails table")
         central_cursor.execute(f"""
             INSERT INTO dbo.ID_repository_logindetails (RequestID, ServerName, LoginName, UserName, Password, DatabaseName,
-            Role, Application, CreatedDate, Reason, created_by)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, {created_date}, ?, ?)
+            Role, Application, CreatedDate, Reason, created_by, Product, Type, Ownership, Owner_Contact, PM_for_Application)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, {created_date}, ?, ?, ?,?,?,?,?)
         """, (request_id, server_name, user_login_name, user_name, password, database_name, 'Public', application,
-              reason, created_by))
+              reason, created_by, product, Type, ownership, owner_contact, POC))
 
         # Commit the changes in the central database
         print("Committing changes to the central database.")
@@ -338,10 +340,7 @@ def dbrefresh():
     return render_template('dbpage.html')
 
 
-<<<<<<< HEAD
 
-=======
->>>>>>> 65cccd69b1c3b8e2941f4aada0208c2a0db22d90
 # Helper: Get client IP
 def get_user_ip():
     forwarded = request.environ.get('HTTP_X_FORWARDED_FOR')
@@ -3887,7 +3886,6 @@ def database_page():
     return render_template('page1.html', server=server_name, database=database_name,script_name2=script_name2,script_name=script_name,script_name3=script_name3, script_name4=script_name4,script_name5=script_name5,script_name6=script_name6,script_name7=script_name7,script_name8=script_name8)
 
 
-<<<<<<< HEAD
 REPL_CONN_STR = (
     "DRIVER={ODBC Driver 17 for SQL Server};"
     "SERVER=ISCLSCDBT9\\DIST;"
@@ -3966,17 +3964,11 @@ def dashboard_summary():
         summary_table=summary_html
     )
 
-=======
->>>>>>> 65cccd69b1c3b8e2941f4aada0208c2a0db22d90
 
 
 # Run the Flask application
 if __name__ == '__main__':
     init_db()
-<<<<<<< HEAD
     app.run(host='0.0.0.0', port=9099,debug='True')
-=======
-    app.run(host='0.0.0.0', port=8099,debug='True')
->>>>>>> 65cccd69b1c3b8e2941f4aada0208c2a0db22d90
 
 #app.run(host='0.0.0.0', port=5000)
