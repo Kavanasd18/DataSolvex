@@ -5,69 +5,14 @@
   box-sizing: border-box;
 }
  
-/* ===== Design system (same palette as sqlserver_main) ===== */
-:root {
-  --primary: #4f46e5;
-  --primary-light: #818cf8;
-  --primary-dark: #3730a3;
-  --secondary: #06b6d4;
-  --secondary-light: #67e8f9;
-  --secondary-dark: #0e7490;
-  --accent: #f97316;
-  --accent-light: #fdba74;
-  --dark: #0f172a;
-  --dark-soft: #1e293b;
-  --gray: #64748b;
-  --gray-light: #94a3b8;
-  --light: #f8fafc;
-  --light-soft: #f1f5f9;
+/* ⚠️ NO :root HERE
+   All variables (--primary, --dark, etc.)
+   now come from global.css
+*/
  
-  --space-xs: 0.25rem;
-  --space-sm: 0.5rem;
-  --space-md: 1rem;
-  --space-lg: 1.5rem;
-  --space-xl: 2rem;
-  --space-2xl: 3rem;
-  --space-3xl: 5rem;
- 
-  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-}
- 
-/* ===== Page background, same style as main hub ===== */
-body {
-  font-family: var(--font-sans);
-  background-color: var(--light);
-  color: var(--dark);
-  line-height: 1.6;
-  min-height: 100vh;
-  overflow-x: hidden;
-  position: relative;
-}
- 
-/* glassy radial gradients like sqlserver_main.html */
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background: radial-gradient(
-      circle at 15% 85%,
-      rgba(79, 70, 229, 0.15) 0%,
-      transparent 40%
-    ),
-    radial-gradient(
-      circle at 85% 15%,
-      rgba(6, 182, 212, 0.1) 0%,
-      transparent 45%
-    ),
-    radial-gradient(
-      circle at 50% 50%,
-      rgba(249, 115, 22, 0.05) 0%,
-      transparent 60%
-    );
-  z-index: -1;
-  pointer-events: none;
-}
+/* ⚠️ NO body / body::before HERE
+   Background + fonts come from global.css
+*/
  
 /* ===== Top bar (mapping your .navbar to main header look) ===== */
 .navbar {
@@ -146,7 +91,7 @@ h3 {
 .flex-wrap {
   /* so bootstrap classes don’t break layout */
 }
-
+ 
 /* Row for the two filter boxes inside the main card */
 .filters-row {
   display: flex;
@@ -156,7 +101,7 @@ h3 {
   margin-bottom: 18px;
   flex-wrap: wrap;
 }
-
+ 
 /* Let filters stretch nicely but stay as two boxes */
 .filter-input {
   flex: 1;
@@ -169,8 +114,6 @@ h3 {
   font-size: 0.95rem;
   background-color: #f8fafc;
 }
-
- 
  
 .filter-input:focus {
   border-color: var(--primary);
@@ -190,7 +133,7 @@ h3 {
   margin-bottom: 30px;
   max-height: 500px;
   overflow-y: auto;
-  overflow-x:hidden;
+  overflow-x: hidden;
 }
  
 /* ===== Table styling (keeping your original colors) ===== */
@@ -228,7 +171,7 @@ table td {
 table tbody tr:hover td {
   background-color: #e6f2ff;
 }
-
+ 
 .section-header {
   display: flex;
   align-items: center;
@@ -240,13 +183,62 @@ table tbody tr:hover td {
   margin: 0;
   font-size: 1.45rem;
   font-weight: 800;
-  background: linear-gradient(135deg, var(--dark) 0%, var(--primary) 100%);        /* blue accent like your main dashboard */
+  background: linear-gradient(
+    135deg,
+    var(--dark,#0f172a) 0%,
+    var(--primary,#4f46e5) 100%
+  ); /* blue accent like your main dashboard */
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  letter-spacing: -0.03em;         /* or your primary text color */
+  letter-spacing: -0.03em; /* or your primary text color */
 }
 
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+ 
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+ 
+/* Back button styling */
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  background: rgba(248, 250, 252, 0.95);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--dark-soft);
+  transition: all 0.2s ease;
+}
+ 
+.back-button:hover {
+  color: var(--primary);
+  border-color: rgba(79, 70, 229, 0.7);
+  background: rgba(239, 246, 255, 1);
+}
+ 
+/* Keep heading as your old style */
+.navbar h2 {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--dark,#0f172a) 0%, var(--primary,#4f46e5) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.03em;
+}
 
 /* ===== Responsive tweaks ===== */
 @media (max-width: 768px) {
@@ -258,10 +250,14 @@ table tbody tr:hover td {
   }
  
   .content {
-    padding: var(--space-2xl) var(--space-lg);
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0;
   }
  
   .filter-input {
     width: 100%;
   }
+
+
 }
