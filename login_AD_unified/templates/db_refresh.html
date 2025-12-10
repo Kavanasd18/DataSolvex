@@ -17,7 +17,7 @@
           <a href="{{ url_for('index') }}" class="app-brand">DataSolveX</a>
           <ul class="app-nav-menu">
             <li><a href="{{ url_for('index') }}" class="app-nav-link">Home</a></li>
-            <li><a href="{{ url_for('second_index') }}" class="app-nav-link active">DB Refresh</a></li>
+            <li><a href="{{ url_for('database_page') }}" class="app-nav-link active">DB Refresh</a></li>
           </ul>
         </div>
       </nav>
@@ -58,11 +58,18 @@
             </div>
           </div>
           <div class="db-header-actions">
-            <button onclick="executeNextStep()" class="db-btn db-btn-primary">
+            <button id="runButton" onclick="executeNextStep()" class="db-btn db-btn-primary">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polygon points="5 3 19 12 5 21 5 3"></polygon>
               </svg>
-              Run All Steps
+              <span id="runButtonText">Run All Steps</span>
+            </button>
+            <button type="button" onclick="clearSelections()" class="db-btn db-btn-default">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+              Clear Selection
             </button>
             <button onclick="resetApp()" class="db-btn db-btn-default">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -88,7 +95,16 @@
             <div class="db-config-grid">
               <div class="db-form-field">
                 <label class="db-label">Folder Path <span class="db-required">*</span></label>
-                <input type="text" id="folderPath" class="db-input" placeholder="C:/path/to/log" required />
+                <div class="db-input-with-button">
+                  <input type="text" id="folderPath" class="db-input" placeholder="Paste full path (e.g., C:\\path)" required />
+                  <button type="button" onclick="showPathHelper()" class="db-btn db-btn-browse" title="How to get folder path">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                      <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                  </button>
+                </div>
               </div>
               <div class="db-form-field">
                 <label class="db-label">Source Server</label>
@@ -134,6 +150,7 @@
         <table class="db-table" id="databaseTable">
           <thead>
             <tr>
+              <th class="select-col" style="width: 48px;">Select</th>
               <th style="width: 60px;">Step</th>
               <th style="width: 35%;">Description</th>
               <th style="width: 140px;">Status</th>
@@ -144,6 +161,7 @@
           </thead>
           <tbody>
             <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="1" id="step-select-1" /></td>
               <td>1</td>
               <td>Altering schema bounded objects</td>
               <td><span id="output1" class="db-status db-status-pending">Not started</span></td>
@@ -152,6 +170,7 @@
               <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
             </tr>
             <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="2" id="step-select-2" /></td>
               <td>2</td>
               <td>Drop 'TestOwner' Objects</td>
               <td><span id="output2" class="db-status db-status-pending">Not started</span></td>
@@ -160,6 +179,7 @@
               <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
             </tr>
             <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="3" id="step-select-3" /></td>
               <td>3</td>
               <td>Schema conversion for tables: CorpUser to TestOwner</td>
               <td><span id="output3" class="db-status db-status-pending">Not started</span></td>
@@ -168,6 +188,7 @@
               <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
             </tr>
             <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="4" id="step-select-4" /></td>
               <td>4</td>
               <td>Schema conversion for Objects: CorpUser to TestOwner</td>
               <td><span id="output4" class="db-status db-status-pending">Not started</span></td>
@@ -176,6 +197,7 @@
               <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
             </tr>
             <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="5" id="step-select-5" /></td>
               <td>5</td>
               <td>Scripts generation for all Objects</td>
               <td><span id="output5" class="db-status db-status-pending">Not started</span></td>
@@ -184,6 +206,7 @@
               <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
             </tr>
             <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="6" id="step-select-6" /></td>
               <td>6</td>
               <td>Alter and replace to TestOwner inside scripts</td>
               <td><span id="output6" class="db-status db-status-pending">Not started</span></td>
@@ -192,6 +215,7 @@
               <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
             </tr>
             <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="7" id="step-select-7" /></td>
               <td>7</td>
               <td>Execute the scripts generated</td>
               <td><span id="output7" class="db-status db-status-pending">Not started</span></td>
@@ -200,6 +224,7 @@
               <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
             </tr>
             <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="8" id="step-select-8" /></td>
               <td>8</td>
               <td>Backup of Foreign Keys</td>
               <td><span id="output8" class="db-status db-status-pending">Not started</span></td>
@@ -208,6 +233,7 @@
               <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
             </tr>
             <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="9" id="step-select-9" /></td>
               <td>9</td>
               <td>Dropping foreign key table contents</td>
               <td><span id="output9" class="db-status db-status-pending">Not started</span></td>
@@ -216,6 +242,7 @@
               <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
             </tr>
             <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="10" id="step-select-10" /></td>
               <td>10</td>
               <td>Dropping and Recreating tables from source to destination</td>
               <td><span id="output10" class="db-status db-status-pending">Not started</span></td>
@@ -224,6 +251,7 @@
               <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
             </tr>
             <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="11" id="step-select-11" /></td>
               <td>11</td>
               <td>Transferring data from source to destination</td>
               <td><span id="output11" class="db-status db-status-pending">Not started</span></td>
@@ -232,6 +260,7 @@
               <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
             </tr>
             <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="12" id="step-select-12" /></td>
               <td>12</td>
               <td>Recreating Foreign Keys</td>
               <td><span id="output12" class="db-status db-status-pending">Not started</span></td>
@@ -240,6 +269,7 @@
               <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
             </tr>
             <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="13" id="step-select-13" /></td>
               <td>13</td>
               <td>Listing object names with CorpUser</td>
               <td><span id="output13" class="db-status db-status-pending">Not started</span></td>
@@ -248,6 +278,7 @@
               <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
             </tr>
             <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="14" id="step-select-14" /></td>
               <td>14</td>
               <td>Regenerating scripts for CorpUser objects</td>
               <td><span id="output14" class="db-status db-status-pending">Not started</span></td>
@@ -264,6 +295,171 @@
     </div>
 
     <!-- Visual Feedback Circles -->
+
+    <script>
+      // Show helper modal with instructions on how to copy folder path
+      function showPathHelper() {
+        // Remove existing modal if any
+        const existingModal = document.getElementById('pathHelperModal');
+        if (existingModal) existingModal.remove();
+        
+        // Create modal
+        const modal = document.createElement('div');
+        modal.id = 'pathHelperModal';
+        modal.innerHTML = `
+          <div class="path-modal-overlay" onclick="closePathHelper()">
+            <div class="path-modal-content" onclick="event.stopPropagation()">
+              <div class="path-modal-header">
+                <h3>How to Get Folder Path</h3>
+                <button onclick="closePathHelper()" class="path-modal-close">&times;</button>
+              </div>
+              <div class="path-modal-body">
+                <p><strong>Follow these steps in Windows Explorer:</strong></p>
+                <ol>
+                  <li>Open <strong>File Explorer</strong> (Win + E)</li>
+                  <li>Navigate to your desired folder</li>
+                  <li>Click on the <strong>address bar</strong> at the top</li>
+                  <li>The full path will be highlighted (e.g., <code>D:\\Projects\\folder_name</code>)</li>
+                  <li>Press <strong>Ctrl + C</strong> to copy</li>
+                  <li>Come back here and press <strong>Ctrl + V</strong> to paste</li>
+                </ol>
+                <div class="path-modal-tip">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                  </svg>
+                  <span><strong>Tip:</strong> You can also right-click the folder → "Copy as path" then paste here (remove quotes if any)</span>
+                </div>
+              </div>
+              <div class="path-modal-footer">
+                <button onclick="closePathHelper()" class="db-btn db-btn-primary">Got it!</button>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        // Add modal styles if not exists
+        if (!document.getElementById('pathModalStyles')) {
+          const style = document.createElement('style');
+          style.id = 'pathModalStyles';
+          style.textContent = `
+            .path-modal-overlay {
+              position: fixed;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              background: rgba(0,0,0,0.5);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              z-index: 10001;
+              animation: fadeIn 0.2s ease;
+            }
+            @keyframes fadeIn {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+            .path-modal-content {
+              background: white;
+              border-radius: 8px;
+              width: 90%;
+              max-width: 500px;
+              box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+              animation: slideUp 0.3s ease;
+            }
+            @keyframes slideUp {
+              from { transform: translateY(20px); opacity: 0; }
+              to { transform: translateY(0); opacity: 1; }
+            }
+            .path-modal-header {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              padding: 16px 20px;
+              border-bottom: 1px solid #e0e0e0;
+            }
+            .path-modal-header h3 {
+              margin: 0;
+              font-size: 18px;
+              color: #323130;
+            }
+            .path-modal-close {
+              background: none;
+              border: none;
+              font-size: 24px;
+              cursor: pointer;
+              color: #605e5c;
+              padding: 0;
+              line-height: 1;
+            }
+            .path-modal-close:hover {
+              color: #323130;
+            }
+            .path-modal-body {
+              padding: 20px;
+            }
+            .path-modal-body p {
+              margin: 0 0 12px 0;
+              color: #323130;
+            }
+            .path-modal-body ol {
+              margin: 0;
+              padding-left: 20px;
+              color: #605e5c;
+            }
+            .path-modal-body li {
+              margin-bottom: 8px;
+              line-height: 1.5;
+            }
+            .path-modal-body code {
+              background: #f3f2f1;
+              padding: 2px 6px;
+              border-radius: 3px;
+              font-family: monospace;
+              color: #0078d4;
+            }
+            .path-modal-tip {
+              display: flex;
+              gap: 10px;
+              align-items: flex-start;
+              background: #f0f9ff;
+              border: 1px solid #0078d4;
+              border-radius: 4px;
+              padding: 12px;
+              margin-top: 16px;
+              color: #0078d4;
+            }
+            .path-modal-tip svg {
+              flex-shrink: 0;
+              margin-top: 2px;
+            }
+            .path-modal-footer {
+              padding: 16px 20px;
+              border-top: 1px solid #e0e0e0;
+              display: flex;
+              justify-content: flex-end;
+            }
+          `;
+          document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(modal);
+        
+        // Focus the folder input when modal closes
+        document.getElementById('folderPath').focus();
+      }
+      
+      function closePathHelper() {
+        const modal = document.getElementById('pathHelperModal');
+        if (modal) {
+          modal.querySelector('.path-modal-overlay').style.animation = 'fadeIn 0.2s ease reverse';
+          setTimeout(() => modal.remove(), 200);
+        }
+        document.getElementById('folderPath').focus();
+      }
+    </script>
 
     <script>
       let run1Status = 0; // 0: Not executed, 1: Executed, -1: Failed
@@ -1836,6 +2032,12 @@
       function runNextStep() {
         if (isPaused) return; // If paused, do not run any steps
 
+        if (Array.isArray(window.selectedSteps) && window.selectedSteps.length > 0) {
+          const next = window.selectedSteps.find(s => s >= currentStep);
+          if (!next) return; // No further selected steps
+          currentStep = next;
+        }
+
         switch (currentStep) {
           case 0:
             return; // No step to run
@@ -1899,8 +2101,19 @@
       }
 
       function executeNextStep() {
-        if (currentStep === 0) {
-          currentStep = 1; // Start with PowerShell
+        const selected = Array.from(document.querySelectorAll('.db-step-checkbox:checked'))
+          .map(cb => parseInt(cb.dataset.step, 10))
+          .filter(n => !isNaN(n))
+          .sort((a, b) => a - b);
+
+        if (selected.length > 0) {
+          window.selectedSteps = selected;
+          currentStep = selected[0];
+        } else {
+          window.selectedSteps = null;
+          if (currentStep === 0) {
+            currentStep = 1; // Start with PowerShell
+          }
         }
         runNextStep();
       }
@@ -1941,6 +2154,44 @@
           alert("Please select a valid .txt file.");
         }
       }
+    </script>
+    <script>
+      function updateRunButtonLabel() {
+        const anyChecked = document.querySelectorAll('.db-step-checkbox:checked').length > 0;
+        const btnText = document.getElementById('runButtonText');
+        if (btnText) btnText.textContent = anyChecked ? 'Run' : 'Run All Steps';
+      }
+
+      function syncStep10Input() {
+        const anyChecked = document.querySelectorAll('.db-step-checkbox:checked').length > 0;
+        const step10Checked = document.getElementById('step-select-10')?.checked;
+        const input = document.getElementById('step10TableFiles');
+        if (input) {
+          // Enabled by default (no selections). In selective mode, enable only if step 10 is selected.
+          const shouldEnable = !anyChecked || !!step10Checked;
+          input.disabled = !shouldEnable;
+        }
+      }
+
+      function clearSelections() {
+        document.querySelectorAll('.db-step-checkbox').forEach(cb => cb.checked = false);
+        window.selectedSteps = null;
+        updateRunButtonLabel();
+        syncStep10Input();
+      }
+
+      function initStepSelections() {
+        document.querySelectorAll('.db-step-checkbox').forEach(cb => {
+          cb.addEventListener('change', () => {
+            updateRunButtonLabel();
+            syncStep10Input();
+          });
+        });
+        updateRunButtonLabel();
+        syncStep10Input();
+      }
+
+      document.addEventListener('DOMContentLoaded', initStepSelections);
     </script>
 
     <script>
