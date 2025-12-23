@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Portal | DataSolveX</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='global.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='replication.css') }}" />
+
+</head>
+<body class="admin-page">
+  <header class="app-header">
+    <nav class="app-nav">
+      <div class="app-nav-container">
+        <a href="{{ url_for('index') }}" class="app-brand">DataSolveX</a>
+        <ul class="app-nav-menu">
+          <li class="app-nav-item">
+            
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <div class="app-breadcrumb">
+      <div class="app-breadcrumb-container">
+        <ul class="breadcrumb-list">
+          <li class="breadcrumb-item">
+            <a href="{{ url_for('login') }}">Login</a>
+          </li>
+          
+          <li class="breadcrumb-item active">
+            Admin portal
+          </li>
+        </ul>
+
+    </div>
+  </header>
+
+  <main class="page-wrapper">
+    <section class="page-content">
+      <div class="container-sm">
+        <div class="card-glass shadow-lg">
+          <div class="card-header">
+            <h3>Admin Portal</h3>
+          </div>
+
+          <div class="card-body">
+
+            <div class="btn-group justify-between">
+              <!-- Usage Analytics (admin-only) -->
+              <a href="{{ url_for('loganalytics_root') }}" class="btn-primary btn-lg">
+                Usage Analytics
+              </a>
+
+              <!-- Main Tool (allow admins too) -->
+              <a href="{{ url_for('index') }}" class="btn-secondary btn-lg">
+                Datasolvex
+              </a>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </section>
+
+  <footer class="footer">
+      <div class="footer-content">
+        <div class="footer-bottom">
+          DataSolveX
+        </div>
+      </div>
+    </footer>
+</body>
+</html>

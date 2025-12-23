@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>SQL Inventory – Servers</title>
+
+  <!-- Global Design System -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}" />
+  <!-- <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" /> -->
+  <style>
+    .container {
+      max-width: 1600px !important;
+      width: min(1280px, 100%) !important;
+      margin: 0 auto;
+      padding: 22px 22px 48px;
+      margin-top: 110px;
+    }
+
+    #serverCards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    @media (max-width: 1200px) {
+      #serverCards {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 768px) {
+      #serverCards {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* make wrappers not interfere */
+    .server-card-wrapper {
+      width: 100%;
+    }
+  </style>
+</head>
+
+<body class="inventory-body">
+
+  {% set breadcrumb = [
+  {'label': 'SQL Server Main', 'href': '/sqlserver_main'},
+  {'label': 'Inventory Management', 'active': True}
+  ] %}
+  {% include "_dsx_inventory_header.html" %}
+
+  <!-- PAGE CONTENT -->
+  <main class="container container-xl">
+    <!-- TITLE ROW -->
+    <div class="row mb-3">
+      <div class="col-12">
+        <h1 class="page-title">Inventory Management - Server Overview</h1>
+      </div>
+    </div>
+    <!-- SEARCH + DROPDOWN ROW -->
+    <div class="row mb-4">
+      <div class="col-12">
+
+        <!-- Match card horizontal padding -->
+        <div class="filters-wrap">
+
+          <div class="filter-col">
+            <label for="serverSearch" class="form-label">
+              Search
+            </label>
+            <input id="serverSearch" type="text" class="filter-input w-100"
+              placeholder="Server name, environment, SQL version…" />
+          </div>
+
+          <div class="filter-col">
+            <label for="serverDropdown" class="form-label">
+              Quick jump to server
+            </label>
+            <select id="serverDropdown" class="filter-input w-100">
+              <option value="">Select a server...</option>
+              {% for s in servers %}
+              <option value="{{ s.id }}">
+                {{ s.name }}{% if s.environment %} ({{ s.environment }}){% endif %}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+
+    <!-- SERVER CARDS -->
+    <div class="row" id="serverCards">
+
+      {% for s in servers %}
+      <div class="col-12 col-md-6 col-xl-4 server-card-wrapper" data-name="{{ s.name | lower }}"
+        data-env="{{ (s.environment or '') | lower }}"
+        data-sql="{{ (s.sql_version or '') | lower }} {{ (s.sql_edition or '') | lower }}"
+        data-os="{{ (s.os_version or '') | lower }}">
+
+        <div class="card-glass server-card cursor-pointer" data-server-id="{{ s.id }}">
+
+          <!-- HEADER -->
+          <div class="d-flex justify-between align-start mb-3">
+            <div class="flex-1">
+              <div class="font-weight-semibold">
+                {{ s.name }}
+              </div>
+
+              {% if s.environment %}
+              <span class="badge badge-outline mt-1">
+                {{ s.environment }}
+              </span>
+              {% endif %}
+            </div>
+
+            {% if s.status == 'OFFLINE' %}
+            <span class="badge badge-danger">OFFLINE</span>
+            {% else %}
+            <span class="badge badge-success">ONLINE</span>
+            {% endif %}
+          </div>
+
+          <!-- BODY -->
+          <div class="mb-3">
+            <div class="d-flex justify-between mb-2">
+              <span class="text-gray">SQL</span>
+              <span>{{ s.sql_version }}</span>
+            </div>
+
+            <div class="d-flex justify-between mb-2">
+              <span class="text-gray">Windows</span>
+              <span>{{ s.os_version }}</span>
+            </div>
+
+            <div class="d-flex justify-between mb-2">
+              <span class="text-gray">Databases</span>
+              <span>{{ s.total_databases }}</span>
+            </div>
+
+            <div class="d-flex justify-between">
+              <span class="text-gray">Total size</span>
+              <span>{{ "%.1f"|format(s.total_size_gb) }} GB</span>
+            </div>
+          </div>
+
+          <!-- FOOTER -->
+          <div class="d-flex justify-between align-center">
+            <small class="text-gray">
+              Last scan: {{ s.last_scan|fmt_dt }}
+            </small>
+            <span class="text-info font-weight-semibold">
+              View details →
+            </span>
+          </div>
+
+        </div>
+      </div>
+      {% endfor %}
+
+    </div>
+  </main>
+
+  {% include "_dsx_inventory_footer.html" %}
+
+  <!-- JS -->
+  <script>
+    const base = "{{ request.script_root }}";
+
+    // Card click
+    document.querySelectorAll(".server-card").forEach(card => {
+      card.addEventListener("click", () => {
+        const id = card.dataset.serverId;
+        if (id) {
+          window.location.href = `${base}/server/${id}`;
+        }
+      });
+    });
+
+    // Dropdown navigation
+    document.getElementById("serverDropdown")?.addEventListener("change", e => {
+      if (e.target.value) {
+        window.location.href = `${base}/server/${e.target.value}`;
+      }
+    });
+
+    // Search filter
+    const searchInput = document.getElementById("serverSearch");
+    const cardWrappers = document.querySelectorAll(".server-card-wrapper");
+
+    searchInput?.addEventListener("input", () => {
+      const term = searchInput.value.toLowerCase().trim();
+
+      cardWrappers.forEach(wrap => {
+        const haystack = [
+          wrap.dataset.name,
+          wrap.dataset.env,
+          wrap.dataset.sql,
+          wrap.dataset.os
+        ].join(" ");
+
+        wrap.style.display =
+          !term || haystack.includes(term) ? "" : "none";
+      });
+    });
+  </script>
+
+</body>
+
+</html>

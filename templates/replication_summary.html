@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Replication Summary</title>
+  <!-- Global + Replication CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='global.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='replication.css') }}" />
+
+</head>
+
+<body class="replication-summary-page">
+  <header class="app-header">
+    <!-- Top nav bar -->
+    <div class="app-nav">
+      <div class="app-nav-container">
+        <a href="{{ url_for('dashboard') }}" class="app-brand">DataSolveX</a>
+        <ul class="app-nav-menu">
+        </ul>
+      </div>
+    </div>
+
+    <!-- Breadcrumb bar -->
+    <div class="app-breadcrumb">
+      <div class="app-breadcrumb-container">
+        <ul class="breadcrumb-list">
+          <li class="breadcrumb-item">
+            <a href="{{ url_for('sqlserver_main') }}">SQL Server Main</a>
+          </li>
+          <li class="breadcrumb-item">
+            <a href="{{ url_for('dashboard') }}">Replication</a>
+          </li>
+          <li class="breadcrumb-item active">
+            Replication Summary
+          </li>
+        </ul>
+
+        <div class="breadcrumb-actions">
+          <a href="{{ url_for('dashboard') }}" class="app-nav-link breadcrumb-link">
+            Details
+          </a>
+          <a href="{{ url_for('dashboard_summary') }}" onclick="location.reload(); return false;" class="breadcrumb-link">
+            Refresh
+          </a>
+
+        </div>
+      </div>
+    </div>
+  </header>
+
+
+  <div class="container">
+    <main class="page-content">
+      <div class="container">
+
+        <!-- Top toolbar: Back + Title (left) | Details/Summary/Refresh (right) -->
+        <div class="d-flex justify-between align-center mb-3 mt-3">
+          <!-- Left side: Back + page title -->
+          <div class="d-flex align-center gap-md">
+
+            <h2 class="section-title m-0">Replication Summary</h2>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="table-container">
+        <div class="filters-row">
+          <input type="text" id="publication_name_filter" class="filter-input" placeholder="Filter by Publication Name"
+            onkeyup="filterTable()" />
+          <input type="text" id="article_filter" class="filter-input" placeholder="Filter by Article"
+            onkeyup="filterTable()" />
+        </div>
+
+        {{ summary_table | safe }}
+      </div>
+  </div>
+  </main>
+  </div>
+
+
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-bottom">
+        Replication Dashboard · DataSolveX
+      </div>
+    </div>
+  </footer>
+
+  </div>
+
+  <script>
+    window.addEventListener('beforeunload', function () {
+      const data = JSON.stringify({
+        page: window.location.pathname,
+        timestamp: new Date().toISOString()
+      });
+
+      const blob = new Blob([data], { type: 'application/json' });
+      navigator.sendBeacon('/log-exit', blob);
+    });
+  </script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const now = new Date().toISOString();
+      const page = window.location.pathname;
+
+      fetch('/log-entry', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          page: page,
+          timestamp: now
+        })
+      });
+    });
+  </script>
+</body>
+
+</html>

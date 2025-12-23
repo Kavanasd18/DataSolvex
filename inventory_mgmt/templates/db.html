@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>{{ db.database_name }} – Database Dashboard</title>
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}" />
+
+  <style>
+    body.inventory-body {
+      background: radial-gradient(circle at top, #e0f2fe 0, #eef2ff 28%, #f9fafb 100%);
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #0f172a;
+    }
+
+    .inventory-navbar {
+      background: #ffffff;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.3);
+      box-shadow: 0 4px 10px rgba(15, 23, 42, 0.06);
+    }
+
+    .page-title {
+      font-size: 1.3rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: #0f172a;
+      margin-top: 0px !important;
+    }
+
+    .page-subtitle {
+      font-size: 0.85rem;
+      color: #6b7280;
+    }
+
+    .section-card {
+      border-radius: 1rem;
+      padding: 1rem 1.1rem;
+      background: #ffffff;
+      box-shadow: 0 12px 35px rgba(15, 23, 42, 0.06);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      margin-bottom: 1rem;
+    }
+
+    .section-title {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #6b7280;
+      margin-bottom: 0.6rem;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.75rem 1rem;
+    }
+
+    .info-item {
+      padding: 0.55rem 0.75rem;
+      border-radius: 0.55rem;
+      background: #f9fafb;
+    }
+
+    .info-label {
+      font-size: 0.7rem;
+      color: #9ca3af;
+      margin-bottom: 0.15rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .info-value {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: #0f172a;
+      word-break: break-all;
+    }
+
+    .metric-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.7rem;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-size: 0.75rem;
+      margin: 0.1rem 0.2rem;
+      font-weight: 500;
+    }
+
+    .container {
+      max-width: 1600px !important;
+      width: min(1280px, 100%)!important;
+      margin: 0 auto;
+      padding: 22px 22px 48px;
+      margin-top: 110px;
+    }
+  </style>
+</head>
+
+<body class="inventory-body">
+  {% set breadcrumb = [
+  {'label': 'SQL Server Main', 'href': '/sqlserver_main'},
+  {'label': 'Inventory Management', 'href': url_for('index')},
+  {'label': server.name, 'href': url_for('server_detail', server_id=server.id)},
+  {'label': db.database_name, 'active': True}
+  ] %}
+
+  {% set breadcrumb_actions %}
+  <a href="{{ url_for('db_objects', server_id=server.id, db_name=db.database_name) }}" class="breadcrumb-action-link">
+    Object dashboard
+  </a>
+  {% endset %}
+  {% include "_dsx_inventory_header.html" %}
+
+
+
+  <main class="container py-4">
+
+    <!-- PAGE HEADER -->
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start align-items-lg-center mb-3">
+      <div>
+        <h1 class="page-title mb-1">{{ db.database_name }}</h1>
+        <p class="page-subtitle mb-0">
+          Database overview on <strong>{{ server.name }}</strong>
+        </p>
+      </div>
+    </div>
+
+    <!-- CHIPS -->
+    <div class="mb-3">
+
+      <!-- DB ID -->
+      <span class="metric-chip">
+        DB ID: <strong>{{ db.database_id }}</strong>
+      </span>
+
+      <!-- COMPATIBILITY + VERSION -->
+      <span class="metric-chip">
+        Compatibility:
+        <strong>
+          {{ db.compatibility_level }}
+          ({{ db.compatibility_desc }})
+        </strong>
+      </span>
+
+      <!-- SYSTEM DB -->
+      <span class="metric-chip">
+        System DB:
+        <strong>{{ 'Yes' if db.is_system_db else 'No' }}</strong>
+      </span>
+
+      {% if db.is_in_availability_group %}
+      <span class="metric-chip">
+        AG:
+        <strong>{{ db.availability_group_name }}</strong>
+      </span>
+      {% endif %}
+    </div>
+
+    <!-- OBJECT INVENTORY -->
+    <div class="section-card">
+      <h6 class="section-title">Object Inventory</h6>
+
+      <div class="info-grid">
+        <div class="info-item">
+          <div class="info-label">User tables</div>
+          <div class="info-value">{{ obj_summary.table_count }}</div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">Views</div>
+          <div class="info-value">{{ obj_summary.view_count }}</div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">Stored procedures</div>
+          <div class="info-value">{{ obj_summary.proc_count }}</div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">Functions</div>
+          <div class="info-value">{{ obj_summary.func_count }}</div>
+        </div>
+      </div>
+
+      <div class="info-grid mt-3">
+        <div class="info-item">
+          <div class="info-label">DB-level triggers</div>
+          <div class="info-value">{{ obj_summary.db_trigger_count }}</div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">Largest table</div>
+          <div class="info-value">{{ obj_summary.largest_table_name or 'N/A' }}</div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">Largest table size</div>
+          <div class="info-value">
+            {% if obj_summary.largest_table_mb %}
+            {{ "%.2f"|format(obj_summary.largest_table_mb) }} GB
+            {% else %}N/A{% endif %}
+          </div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">Largest table rows</div>
+          <div class="info-value">
+            {% if obj_summary.largest_table_rows %}
+            {{ "{:,}".format(obj_summary.largest_table_rows) }}
+            {% else %}N/A{% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OPTIONS & BEHAVIOR -->
+    <div class="section-card">
+      <h6 class="section-title">Options & Behavior</h6>
+
+      <div class="info-grid">
+        <div class="info-item">
+          <div class="info-label">Page verify</div>
+          <div class="info-value">{{ db.page_verify_option_desc }}</div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">Auto close</div>
+          <div class="info-value">{{ 'ON' if db.is_auto_close_on else 'OFF' }}</div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">Auto shrink</div>
+          <div class="info-value">{{ 'ON' if db.is_auto_shrink_on else 'OFF' }}</div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">Auto create stats</div>
+          <div class="info-value">{{ 'ON' if db.is_auto_create_stats_on else 'OFF' }}</div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">Auto update stats</div>
+          <div class="info-value">{{ 'ON' if db.is_auto_update_stats_on else 'OFF' }}</div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">Async stats</div>
+          <div class="info-value">{{ 'ON' if db.is_auto_update_stats_async_on else 'OFF' }}</div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">Isolation level</div>
+          <div class="info-value">{{ db.isolation_level_desc }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SIZE & STORAGE -->
+    <div class="section-card">
+      <h6 class="section-title">Size & Storage</h6>
+
+      <div class="info-grid">
+        <div class="info-item">
+          <div class="info-label">Database size</div>
+          <div class="info-value">
+            {% set total_mb = (db.data_size_mb or 0) + (db.log_size_mb or 0) %}
+            {{ "%.2f"|format(total_mb / 1024) }} GB
+          </div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">Data size</div>
+          <div class="info-value">{{ "%.2f"|format(db.data_size_mb) }} GB</div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">Log size</div>
+          <div class="info-value">{{ "%.2f"|format(db.log_size_mb) }} GB</div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">Data files</div>
+          <div class="info-value">{{ db.data_file_count }}</div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">Log files</div>
+          <div class="info-value">{{ db.log_file_count }}</div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">Primary data path</div>
+          <div class="info-value">{{ db.primary_data_path or 'N/A' }}</div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">Log path</div>
+          <div class="info-value">{{ db.log_path or 'N/A' }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BACKUPS + HA/DR -->
+    <div class="section-card">
+      <h6 class="section-title">Backups & HA/DR</h6>
+
+      <div class="info-grid">
+        <div class="info-item">
+          <div class="info-label">Last full backup</div>
+          <div class="info-value">{{ db.last_full_backup|fmt_dt if db.last_full_backup else 'N/A' }}</div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">Last diff backup</div>
+          <div class="info-value">{{ db.last_diff_backup|fmt_dt if db.last_diff_backup else 'N/A' }}</div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">Last log backup</div>
+          <div class="info-value">{{ db.last_log_backup|fmt_dt if db.last_log_backup else 'N/A' }}</div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">Availability group</div>
+          <div class="info-value">
+            {% if db.is_in_availability_group %}
+            Yes ({{ db.availability_group_name }})
+            {% else %}
+            No
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">Replication (published)</div>
+          <div class="info-value">{{ 'Yes' if db.is_published_for_replication else 'No' }}</div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">Replication (subscribed)</div>
+          <div class="info-value">{{ 'Yes' if db.is_subscribed_for_replication else 'No' }}</div>
+        </div>
+      </div>
+
+      <hr class="my-3" />
+
+      <div class="info-grid">
+        <div class="info-item">
+          <div class="info-label">Last DBCC CHECKDB</div>
+          <div class="info-value">{{ db.last_dbcc_checkdb|fmt_dt if db.last_dbcc_checkdb else 'N/A' }}</div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">RPO (min since last log backup)</div>
+          <div class="info-value">
+            {% if db.rpo_minutes is not none %}
+            {{ db.rpo_minutes }} min
+            {% else %}
+            N/A
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  {% include "_dsx_inventory_footer.html" %}
+
+</body>
+
+</html>

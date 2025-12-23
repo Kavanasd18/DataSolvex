@@ -1,0 +1,2567 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DB Refresh Tool | DataSolveX</title>
+  <link rel="stylesheet" href="../static/global.css">
+  <link rel="stylesheet" href="../static/db_refresh.css">
+  <link rel="stylesheet" href="../static/replication.css">
+  <script src="{{ url_for('static', filename='js/jquery-3.6.0.min.js') }}"></script>
+</head>
+
+<body>
+  <header class="app-header">
+    <!-- Top Navigation Bar -->
+    <nav class="app-nav">
+      <div class="app-nav-container">
+        <a href="{{ url_for('index') }}" class="app-brand">DataSolveX</a>
+        
+      </div>
+    </nav>
+
+    <!-- Breadcrumb Bar -->
+    <div class="app-breadcrumb">
+      <div class="app-breadcrumb-container">
+        <ul class="breadcrumb-list">
+          <li class="breadcrumb-item">
+            <a href="{{ url_for('index') }}">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                <polyline points="9 22 9 12 15 12 15 22"></polyline>
+              </svg>
+              Home
+            </a>
+          </li>
+          <li class="breadcrumb-item">
+            <a href="{{ url_for('sqlserver_main') }}">Microsoft SQL Server</a>
+          </li>
+          <li class="breadcrumb-item active">Database Refresh</li>
+        </ul>
+      </div>
+    </div>
+  </header>
+
+  <div class="db-refresh-container">
+    <!-- Page Header -->
+    <div class="db-page-header">
+      <div class="db-header-content">
+        <div class="db-title-section">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 2.2"></path>
+          </svg>
+          <div>
+            <h1 class="db-page-title">Database Refresh</h1>
+            <p class="db-page-subtitle">Server: <strong>{{ server }}</strong> | Database: <strong>{{ database
+                }}</strong></p>
+          </div>
+        </div>
+        <div class="db-header-actions">
+          <button id="runButton" onclick="executeNextStep()" class="db-btn db-btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+            <span id="runButtonText">Run All Steps</span>
+          </button>
+          <button type="button" onclick="clearSelections()" class="db-btn db-btn-default">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+            Clear Selection
+          </button>
+          <button onclick="resetApp()" class="db-btn db-btn-default">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+              <path d="M3 3v5h5"></path>
+            </svg>
+            Reset
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Configuration Panel (Collapsible) -->
+    <div class="db-config-panel">
+      <button class="db-config-toggle" onclick="toggleConfig()">
+        <svg id="configChevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+          stroke-width="2">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+        Configuration Settings
+      </button>
+      <div class="db-config-content" id="configContent" style="display: none;">
+        <form id="folderForm" onsubmit="submitFolder(); return false;" class="db-config-form">
+          <div class="db-config-grid">
+            <div class="db-form-field">
+              <label class="db-label">Folder Path <span class="db-required">*</span></label>
+              <div class="db-input-with-button">
+                <input type="text" id="folderPath" class="db-input" placeholder="Paste full path (e.g., C:\\path)"
+                  required />
+                <button type="button" onclick="showPathHelper()" class="db-btn db-btn-browse"
+                  title="How to get folder path">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div class="db-form-field">
+              <label class="db-label">Source Server</label>
+              <input type="text" id="Server" class="db-input" value="{{ server }}" readonly />
+            </div>
+            <div class="db-form-field">
+              <label class="db-label">Destination Server <span class="db-required">*</span></label>
+              <input type="text" id="destinationServer" class="db-input" placeholder="Server name" required />
+            </div>
+            <div class="db-form-field">
+              <label class="db-label">Destination Database <span class="db-required">*</span></label>
+              <input type="text" id="destinationDatabase" class="db-input" placeholder="Database name" required />
+            </div>
+            <div class="db-form-field">
+              <label class="db-label">From Schema <span class="db-required">*</span></label>
+              <input type="text" id="schemanamefrom" class="db-input" placeholder="Source schema" required />
+            </div>
+            <div class="db-form-field">
+              <label class="db-label">To Schema <span class="db-required">*</span></label>
+              <input type="text" id="schemanameto" class="db-input" placeholder="Target schema" required />
+            </div>
+            <div class="db-form-field db-form-field-full">
+              <label class="db-label">Step 10 Table Files <span class="db-required">*</span></label>
+              <input type="text" id="step10TableFiles" class="db-input" placeholder="Table file paths" required />
+            </div>
+          </div>
+          <div class="db-config-actions">
+            <button type="submit" class="db-btn db-btn-primary">Initialize Configuration</button>
+            <button type="button" onclick="pauseExecution()" class="db-btn db-btn-default">Pause</button>
+            <button type="button" onclick="resumeExecution()" class="db-btn db-btn-default">Resume</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Hidden file input -->
+    <input type="file" id="fileInput" accept=".txt" style="display: none" onchange="readFileContent(event)" />
+
+    <!-- Main Table Section -->
+    <div class="db-table-section">
+      <!-- Main Table Section -->
+      <div class="db-table-section">
+        <table class="db-table" id="databaseTable">
+          <thead>
+            <tr>
+              <th class="select-col" style="width: 48px;">Select</th>
+              <th style="width: 60px;">Step</th>
+              <th style="width: 35%;">Description</th>
+              <th style="width: 140px;">Status</th>
+              <th style="width: 120px;">Validation</th>
+              <th style="width: 140px;">Time Taken</th>
+              <th style="width: 100px;">Log</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="1" id="step-select-1" />
+              </td>
+              <td>1</td>
+              <td>Altering schema bounded objects</td>
+              <td><span id="output1" class="db-status db-status-pending">Not started</span></td>
+              <td><span id="validation1" class="db-badge db-badge-gray">Pending</span></td>
+              <td id="timeTaken1" class="db-time">—</td>
+              <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
+            </tr>
+            <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="2" id="step-select-2" />
+              </td>
+              <td>2</td>
+              <td>Drop 'TestOwner' Objects</td>
+              <td><span id="output2" class="db-status db-status-pending">Not started</span></td>
+              <td><span id="validation2" class="db-badge db-badge-gray">Pending</span></td>
+              <td id="timeTaken2" class="db-time">—</td>
+              <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
+            </tr>
+            <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="3" id="step-select-3" />
+              </td>
+              <td>3</td>
+              <td>Schema conversion for tables: CorpUser to TestOwner</td>
+              <td><span id="output3" class="db-status db-status-pending">Not started</span></td>
+              <td><span id="validation3" class="db-badge db-badge-gray">Pending</span></td>
+              <td id="timeTaken3" class="db-time">—</td>
+              <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
+            </tr>
+            <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="4" id="step-select-4" />
+              </td>
+              <td>4</td>
+              <td>Schema conversion for Objects: CorpUser to TestOwner</td>
+              <td><span id="output4" class="db-status db-status-pending">Not started</span></td>
+              <td><span id="validation4" class="db-badge db-badge-gray">Pending</span></td>
+              <td id="timeTaken4" class="db-time">—</td>
+              <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
+            </tr>
+            <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="5" id="step-select-5" />
+              </td>
+              <td>5</td>
+              <td>Scripts generation for all Objects</td>
+              <td><span id="output5" class="db-status db-status-pending">Not started</span></td>
+              <td><span id="validation5" class="db-badge db-badge-gray">Pending</span></td>
+              <td id="timeTaken5" class="db-time">—</td>
+              <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
+            </tr>
+            <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="6" id="step-select-6" />
+              </td>
+              <td>6</td>
+              <td>Alter and replace to TestOwner inside scripts</td>
+              <td><span id="output6" class="db-status db-status-pending">Not started</span></td>
+              <td><span id="validation6" class="db-badge db-badge-gray">Pending</span></td>
+              <td id="timeTaken6" class="db-time">—</td>
+              <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
+            </tr>
+            <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="7" id="step-select-7" />
+              </td>
+              <td>7</td>
+              <td>Execute the scripts generated</td>
+              <td><span id="output7" class="db-status db-status-pending">Not started</span></td>
+              <td><span id="validation7" class="db-badge db-badge-gray">Pending</span></td>
+              <td id="timeTaken7" class="db-time">—</td>
+              <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
+            </tr>
+            <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="8" id="step-select-8" />
+              </td>
+              <td>8</td>
+              <td>Backup of Foreign Keys</td>
+              <td><span id="output8" class="db-status db-status-pending">Not started</span></td>
+              <td><span id="validation8" class="db-badge db-badge-gray">Pending</span></td>
+              <td id="timeTaken8" class="db-time">—</td>
+              <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
+            </tr>
+            <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="9" id="step-select-9" />
+              </td>
+              <td>9</td>
+              <td>Dropping foreign key table contents</td>
+              <td><span id="output9" class="db-status db-status-pending">Not started</span></td>
+              <td><span id="validation9" class="db-badge db-badge-gray">Pending</span></td>
+              <td id="timeTaken9" class="db-time">—</td>
+              <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
+            </tr>
+            <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="10"
+                  id="step-select-10" /></td>
+              <td>10</td>
+              <td>Dropping and Recreating tables from source to destination</td>
+              <td><span id="output10" class="db-status db-status-pending">Not started</span></td>
+              <td><span id="validation10" class="db-badge db-badge-gray">Pending</span></td>
+              <td id="timeTaken10" class="db-time">—</td>
+              <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
+            </tr>
+            <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="11"
+                  id="step-select-11" /></td>
+              <td>11</td>
+              <td>Transferring data from source to destination</td>
+              <td><span id="output11" class="db-status db-status-pending">Not started</span></td>
+              <td><span id="validation11" class="db-badge db-badge-gray">Pending</span></td>
+              <td id="timeTaken11" class="db-time">—</td>
+              <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
+            </tr>
+            <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="12"
+                  id="step-select-12" /></td>
+              <td>12</td>
+              <td>Recreating Foreign Keys</td>
+              <td><span id="output12" class="db-status db-status-pending">Not started</span></td>
+              <td><span id="validation12" class="db-badge db-badge-gray">Pending</span></td>
+              <td id="timeTaken12" class="db-time">—</td>
+              <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
+            </tr>
+            <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="13"
+                  id="step-select-13" /></td>
+              <td>13</td>
+              <td>Listing object names with CorpUser</td>
+              <td><span id="output13" class="db-status db-status-pending">Not started</span></td>
+              <td><span id="validation13" class="db-badge db-badge-gray">Pending</span></td>
+              <td id="timeTaken13" class="db-time">—</td>
+              <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
+            </tr>
+            <tr>
+              <td class="select-col"><input type="checkbox" class="db-step-checkbox" data-step="14"
+                  id="step-select-14" /></td>
+              <td>14</td>
+              <td>Regenerating scripts for CorpUser objects</td>
+              <td><span id="output14" class="db-status db-status-pending">Not started</span></td>
+              <td><span id="validation14" class="db-badge db-badge-gray">Pending</span></td>
+              <td id="timeTaken14" class="db-time">—</td>
+              <td><a href="#" onclick="triggerFileBrowse()" class="db-link">View</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="output"></div>
+      <div id="fileContent"></div>
+    </div>
+
+    <footer class="footer">
+      <div class="footer-content">
+        <div class="footer-bottom">
+          DataSolveX
+        </div>
+      </div>
+    </footer>
+
+    <!-- Visual Feedback Circles -->
+
+    <script>
+      // Show helper modal with instructions on how to copy folder path
+      function showPathHelper() {
+        // Remove existing modal if any
+        const existingModal = document.getElementById('pathHelperModal');
+        if (existingModal) existingModal.remove();
+
+        // Create modal
+        const modal = document.createElement('div');
+        modal.id = 'pathHelperModal';
+        modal.innerHTML = `
+          <div class="path-modal-overlay" onclick="closePathHelper()">
+            <div class="path-modal-content" onclick="event.stopPropagation()">
+              <div class="path-modal-header">
+                <h3>How to Get Folder Path</h3>
+                <button onclick="closePathHelper()" class="path-modal-close">&times;</button>
+              </div>
+              <div class="path-modal-body">
+                <p><strong>Follow these steps in Windows Explorer:</strong></p>
+                <ol>
+                  <li>Open <strong>File Explorer</strong> (Win + E)</li>
+                  <li>Navigate to your desired folder</li>
+                  <li>Click on the <strong>address bar</strong> at the top</li>
+                  <li>The full path will be highlighted (e.g., <code>D:\\Projects\\folder_name</code>)</li>
+                  <li>Press <strong>Ctrl + C</strong> to copy</li>
+                  <li>Come back here and press <strong>Ctrl + V</strong> to paste</li>
+                </ol>
+                <div class="path-modal-tip">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                  </svg>
+                  <span><strong>Tip:</strong> You can also right-click the folder → "Copy as path" then paste here (remove quotes if any)</span>
+                </div>
+              </div>
+              <div class="path-modal-footer">
+                <button onclick="closePathHelper()" class="db-btn db-btn-primary">Got it!</button>
+              </div>
+            </div>
+          </div>
+        `;
+
+        // Add modal styles if not exists
+        if (!document.getElementById('pathModalStyles')) {
+          const style = document.createElement('style');
+          style.id = 'pathModalStyles';
+          style.textContent = `
+            .path-modal-overlay {
+              position: fixed;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              background: rgba(0,0,0,0.5);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              z-index: 10001;
+              animation: fadeIn 0.2s ease;
+            }
+            @keyframes fadeIn {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+            .path-modal-content {
+              background: white;
+              border-radius: 8px;
+              width: 90%;
+              max-width: 500px;
+              box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+              animation: slideUp 0.3s ease;
+            }
+            @keyframes slideUp {
+              from { transform: translateY(20px); opacity: 0; }
+              to { transform: translateY(0); opacity: 1; }
+            }
+            .path-modal-header {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              padding: 16px 20px;
+              border-bottom: 1px solid #e0e0e0;
+            }
+            .path-modal-header h3 {
+              margin: 0;
+              font-size: 18px;
+              color: #323130;
+            }
+            .path-modal-close {
+              background: none;
+              border: none;
+              font-size: 24px;
+              cursor: pointer;
+              color: #605e5c;
+              padding: 0;
+              line-height: 1;
+            }
+            .path-modal-close:hover {
+              color: #323130;
+            }
+            .path-modal-body {
+              padding: 20px;
+            }
+            .path-modal-body p {
+              margin: 0 0 12px 0;
+              color: #323130;
+            }
+            .path-modal-body ol {
+              margin: 0;
+              padding-left: 20px;
+              color: #605e5c;
+            }
+            .path-modal-body li {
+              margin-bottom: 8px;
+              line-height: 1.5;
+            }
+            .path-modal-body code {
+              background: #f3f2f1;
+              padding: 2px 6px;
+              border-radius: 3px;
+              font-family: monospace;
+              color: #0078d4;
+            }
+            .path-modal-tip {
+              display: flex;
+              gap: 10px;
+              align-items: flex-start;
+              background: #f0f9ff;
+              border: 1px solid #0078d4;
+              border-radius: 4px;
+              padding: 12px;
+              margin-top: 16px;
+              color: #0078d4;
+            }
+            .path-modal-tip svg {
+              flex-shrink: 0;
+              margin-top: 2px;
+            }
+            .path-modal-footer {
+              padding: 16px 20px;
+              border-top: 1px solid #e0e0e0;
+              display: flex;
+              justify-content: flex-end;
+            }
+          `;
+          document.head.appendChild(style);
+        }
+
+        document.body.appendChild(modal);
+
+        // Focus the folder input when modal closes
+        document.getElementById('folderPath').focus();
+      }
+
+      function closePathHelper() {
+        const modal = document.getElementById('pathHelperModal');
+        if (modal) {
+          modal.querySelector('.path-modal-overlay').style.animation = 'fadeIn 0.2s ease reverse';
+          setTimeout(() => modal.remove(), 200);
+        }
+        document.getElementById('folderPath').focus();
+      }
+    </script>
+
+    <script>
+      let run1Status = 0; // 0: Not executed, 1: Executed, -1: Failed
+      let run2Status = 0;
+      let run3Status = 0;
+      let run4Status = 0;
+      let run5Status = 0;
+      let run6Status = 0;
+      let run7Status = 0;
+      let run8Status = 0;
+      let run9Status = 0;
+      let run10Status = 0;
+      let run11Status = 0;
+      let run12Status = 0;
+      let run13Status = 0;
+      let run14Status = 0;
+      let run15Status = 0;
+      let run16Status = 0;
+      let run17Status = 0;
+
+      let currentStep = 0;
+
+      function submitFolder() {
+        const folderPath = document.getElementById("folderPath").value;
+        const server = document.getElementById("Server").value;
+        const database = "{{ database }}";
+
+        // Get values for the additional parameters
+        const destinationServer =
+          document.getElementById("destinationServer").value;
+        const destinationDatabase = document.getElementById(
+          "destinationDatabase"
+        ).value;
+        const step10TableFiles =
+          document.getElementById("step10TableFiles").value;
+        const schemanamefrom = document.getElementById("schemanamefrom").value;
+        const schemanameto = document.getElementById("schemanameto").value;
+        fetch("/submit_folder", {
+          method: "POST",
+          body: new URLSearchParams({
+            server: server,
+            database: database,
+            folder_path: folderPath,
+            destination_server: destinationServer, // Add destination_server
+            destination_database: destinationDatabase, // Add destination_database
+            step10_tablename_files: step10TableFiles, // Add step10_tablename_files
+            schemanamefrom: schemanamefrom,
+            schemanameto: schemanameto,
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            alert(data.status);
+            if (
+              data.status.includes("created") ||
+              data.status.includes("exists")
+            ) {
+              sessionStorage.setItem("folderCreated", "true");
+            }
+          })
+          .catch((error) => console.error("Error submitting folder:", error));
+      }
+
+      function runPowerShell1() {
+        setLastRoute("runPowerShell1");
+        const outputDiv = document.getElementById("output1");
+        outputDiv.innerHTML = `<strong>In progress</strong>`;
+        outputDiv.style.color = "orange";
+
+        const folderCreated = sessionStorage.getItem("folderCreated");
+
+        if (!folderCreated) {
+          alert(
+            "First, create a folder by clicking the 'Submit Folder' button."
+          );
+          return;
+        }
+
+        const server = "{{ server }}";
+        const database = "{{ database }}";
+        const folderPath = document.getElementById("folderPath").value;
+
+        if (!folderPath) {
+          alert("Please provide a valid folder path.");
+          return;
+        }
+
+        fetch(
+          `/run_powershell1?server=${server}&database=${database}&folder_path=${encodeURIComponent(
+            folderPath
+          )}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            const outputDiv = document.getElementById("output1");
+            const timeTakenTd = document.getElementById("timeTaken1");
+            const validation = document.getElementById("validation1");
+
+            if (data.status) {
+              // Handle schema errors or success based on the response status
+              if (data.status.includes("Error")) {
+                outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.status}</pre>`;
+                outputDiv.style.color = "red";
+                timeTakenTd.innerHTML = "Error";
+                validation.innerHTML = "Failed";
+                validation.style.color = "red";
+                timeTakenTd.style.color = "red";
+                window.run1Status = -1; // Mark as failed
+                window.run1Result = "Failure";
+              } else {
+                outputDiv.innerHTML = `<strong>Completed</strong>`;
+                outputDiv.style.color = "green";
+                timeTakenTd.innerHTML = `${data.minutes} Min ${data.seconds} Sec ${data.milliseconds} Ms`;
+                validation.innerHTML = "Successful";
+                validation.style.color = "green";
+                timeTakenTd.style.color = "green";
+                window.run1Status = 1; // Mark as successful
+                window.run1Result = "Success";
+                run2Status = 0; // Reset status for the next step
+                currentStep = 2; // Proceed to next step
+                runNextStep();
+              }
+            } else if (data.error) {
+              outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.error}</pre>`;
+              outputDiv.style.color = "red";
+              timeTakenTd.innerHTML = "Error";
+              timeTakenTd.style.color = "red";
+              window.run1Status = -1; // Mark as failed
+              window.run1Result = "failure";
+            }
+          })
+          .catch((error) => {
+            console.error("Error running PowerShell:", error);
+            const outputDiv = document.getElementById("output1");
+            outputDiv.innerHTML = `<strong>Script Error:</strong><pre>${error.message}</pre>`;
+            outputDiv.style.color = "red";
+            timeTakenTd.innerHTML = "Error"; // Set "Error" in the timeTaken column
+            timeTakenTd.style.color = "red";
+            window.run1Status = -1; // Mark as failed
+            window.run1Result = "failure";
+          });
+      }
+
+      function runPowerShell2() {
+        setLastRoute("runPowershell2");
+        const outputDiv = document.getElementById("output2");
+        const timeTakenTd = document.getElementById("timeTaken2"); // Get the corresponding <td> for time taken
+        outputDiv.innerHTML = `<strong>In progress</strong>`;
+        outputDiv.style.color = "orange";
+
+        if (window.run1Status !== 1) {
+          alert("Please run PowerShell first before running Untitled2.ps1.");
+          return;
+        }
+
+        const folderCreated = sessionStorage.getItem("folderCreated");
+
+        if (!folderCreated) {
+          alert(
+            "First, create a folder by clicking the 'Submit Folder' button."
+          );
+          return;
+        }
+
+        const server = "{{ server }}";
+        const database = "{{ database }}";
+        const folderPath = document.getElementById("folderPath").value;
+
+        if (!folderPath) {
+          alert("Please provide a valid folder path.");
+          return;
+        }
+
+        fetch(
+          `/run_powershell2?server=${server}&database=${database}&folder_path=${encodeURIComponent(
+            folderPath
+          )}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            const outputDiv = document.getElementById("output2");
+            const timeTakenTd = document.getElementById("timeTaken2");
+            const validation = document.getElementById("validation2");
+
+            if (data.status) {
+              if (data.status.includes("Schema issue detected")) {
+                outputDiv.innerHTML = `<pre>${data.status}</pre>`;
+                outputDiv.style.color = "red";
+                timeTakenTd.innerHTML = "Error";
+                validation.innerHTML = "Failed";
+                validation.style.color = "red";
+                timeTakenTd.style.color = "red";
+                window.run2Status = -1;
+                window.run2Result = "failure";
+              } else {
+                outputDiv.innerHTML = `<strong>Completed</strong>`;
+                outputDiv.style.color = "green";
+
+                timeTakenTd.innerHTML = `${data.minutes} Min ${data.seconds} Sec ${data.milliseconds} Ms`;
+                validation.innerHTML = "Successful";
+                validation.style.color = "green";
+                timeTakenTd.style.color = "green";
+
+                window.run2Status = 1;
+                window.run2Result = "Success";
+                run3Status = 0;
+                currentStep = 3;
+                runNextStep();
+              }
+            } else if (data.error) {
+              outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.error}</pre>`;
+              outputDiv.style.color = "red";
+              timeTakenTd.innerHTML = "Error";
+              timeTakenTd.style.color = "red";
+              window.run2Status = -1;
+              window.run2Result = "Failure";
+            }
+          })
+          .catch((error) => {
+            console.error("Error running PowerShell:", error);
+            const outputDiv = document.getElementById("output2");
+            const timeTakenTd = document.getElementById("timeTaken2");
+            outputDiv.innerHTML = `<strong>Script Error:</strong><pre>${error.message}</pre>`;
+            outputDiv.style.color = "red";
+            timeTakenTd.innerHTML = "Error";
+            timeTakenTd.style.color = "red";
+            window.run2Status = -1;
+            window.run2Result = "Failure";
+          });
+      }
+
+      function runPowerShell3() {
+        setLastRoute("runPowerShell3");
+        const outputDiv = document.getElementById("output3");
+        outputDiv.innerHTML = `<strong>In progress...</strong>`;
+        outputDiv.style.color = "orange";
+
+        // Check if necessary steps have been completed before proceeding
+        if (window.run1Status !== 1 || window.run2Status !== 1) {
+          alert("Please run PowerShell and Untitled2.ps1 first.");
+          return;
+        }
+
+        const folderCreated = sessionStorage.getItem("folderCreated");
+
+        if (!folderCreated) {
+          alert(
+            "First, create a folder by clicking the 'Submit Folder' button."
+          );
+          return;
+        }
+
+        const server = "{{ server }}";
+        const database = "{{ database }}";
+        const folderPath = document.getElementById("folderPath").value;
+
+        if (!folderPath) {
+          alert("Please provide a valid folder path.");
+          return;
+        }
+
+        fetch(
+          `/run_powershell3?server=${server}&database=${database}&folder_path=${encodeURIComponent(
+            folderPath
+          )}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            const timeTakenTd = document.getElementById("timeTaken3"); // Get the corresponding <td> for time taken
+            const validation = document.getElementById("validation3");
+
+            if (data.status) {
+              if (data.status.includes("Still there are")) {
+                outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.status}</pre>`;
+                outputDiv.style.color = "red";
+                timeTakenTd.innerHTML = "Error";
+                timeTakenTd.style.color = "red";
+                validation.innerHTML = "Failed";
+                validation.style.color = "red";
+                window.run3Status = -1; // Mark as failed
+                window.run3Result = "Failure";
+              } else {
+                outputDiv.innerHTML = `<strong>Completed</strong>`;
+                outputDiv.style.color = "green";
+                if (data.time_taken) {
+                  timeTakenTd.innerHTML = `${data.minutes} Min ${data.seconds} Sec ${data.milliseconds} Ms`;
+                }
+                validation.innerHTML = "Successful";
+                timeTakenTd.style.color = "green";
+                validation.style.color = "green";
+                window.run3Status = 1; // Mark as successful
+                window.run3Result = "success";
+                run4Status = 0;
+                currentStep = 4; // Proceed to next step
+                runNextStep();
+              }
+            } else if (data.error) {
+              outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.error}</pre>`;
+              outputDiv.style.color = "red";
+              timeTakenTd.innerHTML = "Error";
+              timeTakenTd.style.color = "red";
+              window.run3Status = -1; // Mark as failed
+              window.run3Result = "failure";
+            }
+          })
+          .catch((error) => {
+            console.error("Error running PowerShell:", error);
+            const outputDiv = document.getElementById("output3");
+            const timeTakenTd = document.getElementById("timeTaken3");
+            outputDiv.innerHTML = `<strong>Script Error:</strong><pre>${error.message}</pre>`;
+            outputDiv.style.color = "red";
+            timeTakenTd.innerHTML = "Error";
+            timeTakenTd.style.color = "red";
+            window.run3Status = -1; // Mark as failed
+            window.run3Result = "failure";
+          });
+      }
+
+      function runPowerShell4() {
+        setLastRoute("runPowerShell4");
+        const outputDiv = document.getElementById("output4");
+        outputDiv.innerHTML = "<strong>In progress...</strong>";
+        outputDiv.style.color = "orange";
+
+        if (
+          window.run1Status !== 1 ||
+          window.run2Status !== 1 ||
+          window.run3Status !== 1
+        ) {
+          alert("Please run PowerShell, Untitled2.ps1, and PowerShell3 first.");
+          return;
+        }
+
+        const folderCreated = sessionStorage.getItem("folderCreated");
+        if (!folderCreated) {
+          alert(
+            "First, create a folder by clicking the 'Submit Folder' button."
+          );
+          return;
+        }
+
+        const server = "{{ server }}";
+        const database = "{{ database }}";
+        const folderPath = document.getElementById("folderPath").value;
+
+        if (!folderPath) {
+          alert("Please provide a valid folder path.");
+          return;
+        }
+
+        fetch(
+          `/run_powershell4?server=${server}&database=${database}&folder_path=${encodeURIComponent(
+            folderPath
+          )}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            const outputDiv = document.getElementById("output4");
+            const timeTakenTd = document.getElementById("timeTaken4");
+            const validation = document.getElementById("validation4");
+
+            if (data.status) {
+              if (data.status.includes("Still there are")) {
+                outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.status}</pre>`;
+                outputDiv.style.color = "red";
+                timeTakenTd.innerHTML = "Error";
+                timeTakenTd.style.color = "red";
+                validation.innerHTML = "Failed";
+                validation.style.color = "red";
+                window.run4Status = -1;
+                window.run4Result = "failure";
+              } else {
+                outputDiv.innerHTML = "<strong>Completed</strong>";
+                outputDiv.style.color = "green";
+                if (data.time_taken) {
+                  timeTakenTd.innerHTML = `${data.minutes} Min ${data.seconds} Sec ${data.milliseconds} Ms`;
+                }
+                validation.innerHTML = "Successful";
+                timeTakenTd.style.color = "green";
+                validation.style.color = "green";
+                window.run4Status = 1;
+                window.run4Result = "success";
+                run5Status = 0;
+                currentStep = 5;
+                runNextStep();
+              }
+            } else if (data.error) {
+              outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.error}</pre>`;
+              outputDiv.style.color = "red";
+              timeTakenTd.innerHTML = "Error";
+              timeTakenTd.style.color = "red";
+              window.run4Status = -1;
+              window.run4Result = "failure";
+            }
+          })
+          .catch((error) => {
+            console.error("Error running PowerShell:", error);
+            const outputDiv = document.getElementById("output4");
+            const timeTakenTd = document.getElementById("timeTaken4");
+
+            outputDiv.innerHTML = `<strong>Script Error:</strong><pre>${error.message}</pre>`;
+            outputDiv.style.color = "red";
+            timeTakenTd.innerHTML = "Error";
+            timeTakenTd.style.color = "red";
+            window.run4Status = -1;
+            window.run4Result = "failure";
+          });
+      }
+
+      function runPowerShell5() {
+        setLastRoute("runPowershell5");
+        const outputDiv = document.getElementById("output5");
+        outputDiv.innerHTML = `<strong>In progress</pre>`;
+        outputDiv.style.color = "orange";
+        if (
+          window.run1Status !== 1 ||
+          window.run2Status !== 1 ||
+          window.run3Status !== 1 ||
+          window.run4Status !== 1
+        ) {
+          alert(
+            "Please run PowerShell, Untitled2.ps1,PowerShell3 and PowerShell4 first."
+          );
+
+          return;
+        }
+
+        const folderCreated = sessionStorage.getItem("folderCreated");
+
+        if (!folderCreated) {
+          alert(
+            "First, create a folder by clicking the 'Submit Folder' button."
+          );
+
+          return;
+        }
+
+        const server = "{{ server }}";
+        const database = "{{ database }}";
+        const folderPath = document.getElementById("folderPath").value;
+
+        if (!folderPath) {
+          alert("Please provide a valid folder path.");
+
+          return;
+        }
+
+        fetch(
+          `/run_powershell5?server=${server}&database=${database}&folder_path=${encodeURIComponent(
+            folderPath
+          )}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            const outputDiv = document.getElementById("output5");
+            const timeTakenTd = document.getElementById("timeTaken5"); // Get the corresponding <td> for time taken
+            const validation = document.getElementById("validation5"); // Get the corresponding <td> for validation
+            if (data.status) {
+              if (data.status.includes("Validation Failed:")) {
+                outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.status}</pre>`;
+                outputDiv.style.color = "red";
+                timeTakenTd.innerHTML = "Error"; // Set "Error" in the timeTaken column
+                validation.innerHTML = "Failed";
+                timeTakenTd.style.color = "red";
+                validation.style.color = "red";
+                window.run5Status = -1; // Mark as failed
+                window.run5Result = "failure";
+              } else {
+                outputDiv.innerHTML = `<strong>Completed</strong>`;
+                outputDiv.style.color = "green";
+                if (data.time_taken) {
+                  timeTakenTd.innerHTML = `${data.minutes} Min ${data.seconds} Sec ${data.milliseconds} Ms`; // Set the time taken
+                }
+                validation.innerHTML = "Successful";
+                timeTakenTd.style.color = "green";
+                validation.style.color = "green";
+                window.run5Status = 1; // Mark as successful
+                window.run5Result = "success";
+                run6Status = 0;
+                currentStep = 6; // Exit process
+                runNextStep();
+              }
+            } else if (data.error) {
+              outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.error}</pre>`;
+              outputDiv.style.color = "red";
+              timeTakenTd.innerHTML = "Error"; // Set "Error" in the timeTaken column
+              timeTakenTd.style.color = "red";
+              window.run5Status = -1; // Mark as failed
+              window.run5Result = "failure";
+            }
+          })
+          .catch((error) => {
+            console.error("Error running PowerShell:", error);
+            const outputDiv = document.getElementById("output5");
+            const timeTakenTd = document.getElementById("timeTaken5"); // Get the corresponding <td> for time taken
+            outputDiv.innerHTML = `<strong>Script Error:</strong><pre>${error.message}</pre>`;
+            outputDiv.style.color = "red";
+            timeTakenTd.innerHTML = "Error"; // Set "Error" in the timeTaken column
+            timeTakenTd.style.color = "red";
+            window.run5Status = -1; // Mark as failed
+            window.run5Result = "failure";
+          });
+      }
+
+      function runPowerShell6() {
+        setLastRoute("runPowerShell6");
+        const outputDiv = document.getElementById("output6");
+        outputDiv.innerHTML = `<strong>In progress</pre>`;
+        outputDiv.style.color = "orange";
+        if (
+          window.run1Status !== 1 ||
+          window.run2Status !== 1 ||
+          window.run3Status !== 1 ||
+          window.run4Status !== 1 ||
+          window.run5Status !== 1
+        ) {
+          alert(
+            "Please run PowerShell, Untitled2.ps1,PowerShell3,PowerShell4 and powershel5 first."
+          );
+
+          return;
+        }
+
+        const folderCreated = sessionStorage.getItem("folderCreated");
+
+        if (!folderCreated) {
+          alert(
+            "First, create a folder by clicking the 'Submit Folder' button."
+          );
+
+          return;
+        }
+
+        const server = "{{ server }}";
+        const database = "{{ database }}";
+        const folderPath = document.getElementById("folderPath").value;
+
+        if (!folderPath) {
+          alert("Please provide a valid folder path.");
+
+          return;
+        }
+
+        fetch(
+          `/run_powershell6?server=${server}&database=${database}&folder_path=${encodeURIComponent(
+            folderPath
+          )}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            const outputDiv = document.getElementById("output6");
+            const timeTakenTd = document.getElementById("timeTaken6"); // Get the corresponding <td> for time taken
+            const validation = document.getElementById("validation6"); // Get the corresponding <td> for validation
+            if (data.status) {
+              if (
+                data.status.includes(
+                  "PowerShell script executed but validation"
+                )
+              ) {
+                outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.status}</pre>`;
+                outputDiv.style.color = "red";
+                timeTakenTd.innerHTML = "Error"; // Set "Error" in the timeTaken column
+                validation.innerHTML = "Failed";
+                timeTakenTd.style.color = "red";
+                validation.style.color = "red";
+                window.run6Status = -1; // Mark as failed
+                window.run6Result = "failure";
+              } else {
+                outputDiv.innerHTML = `<strong>Completed</strong>`;
+                outputDiv.style.color = "green";
+                if (data.time_taken) {
+                  timeTakenTd.innerHTML = `${data.minutes} Min ${data.seconds} Sec ${data.milliseconds} Ms`; // Set the time taken
+                }
+                validation.innerHTML = "Successful";
+                timeTakenTd.style.color = "green";
+                validation.style.color = "green";
+                window.run6Status = 1; // Mark as successful
+                window.run6Result = "success";
+                run7Status = 0;
+                currentStep = 7; // Exit process
+                runNextStep();
+              }
+            } else if (data.error) {
+              outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.error}</pre>`;
+              outputDiv.style.color = "red";
+              timeTakenTd.innerHTML = "Error"; // Set "Error" in the timeTaken column
+              timeTakenTd.style.color = "red";
+              window.run6Status = -1; // Mark as failed
+              window.run6Result = "failure";
+            }
+          })
+          .catch((error) => {
+            console.error("Error running PowerShell:", error);
+            const outputDiv = document.getElementById("output6");
+            const timeTakenTd = document.getElementById("timeTaken6"); // Get the corresponding <td> for time taken
+            outputDiv.innerHTML = `<strong>Script Error:</strong><pre>${error.message}</pre>`;
+            outputDiv.style.color = "red";
+            timeTakenTd.innerHTML = "Error"; // Set "Error" in the timeTaken column
+            timeTakenTd.style.color = "red";
+            window.run6Status = -1; // Mark as failed
+            window.run6Result = "failure";
+          });
+      }
+
+      function runPowerShell7() {
+        setLastRoute("runPowershell7");
+        const outputDiv = document.getElementById("output7");
+        outputDiv.innerHTML = `<strong>In progress</strong>`;
+        outputDiv.style.color = "orange";
+
+        // Ensure all prerequisite steps are completed before running this script
+        if (
+          window.run1Status !== 1 ||
+          window.run2Status !== 1 ||
+          window.run3Status !== 1 ||
+          window.run4Status !== 1 ||
+          window.run5Status !== 1 ||
+          window.run6Status !== 1
+        ) {
+          alert(
+            "Please run PowerShell, Untitled2.ps1, PowerShell3, PowerShell4, PowerShell5, and PowerShell6 first."
+          );
+          return;
+        }
+
+        const folderCreated = sessionStorage.getItem("folderCreated");
+        if (!folderCreated) {
+          alert(
+            "First, create a folder by clicking the 'Submit Folder' button."
+          );
+          return;
+        }
+
+        const server = "{{ server }}";
+        const database = "{{ database }}";
+        const folderPath = document.getElementById("folderPath").value;
+
+        if (!folderPath) {
+          alert("Please provide a valid folder path.");
+          return;
+        }
+
+        fetch(
+          `/run_powershell7?server=${server}&database=${database}&folder_path=${encodeURIComponent(
+            folderPath
+          )}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            const outputDiv = document.getElementById("output7");
+            const timeTakenTd = document.getElementById("timeTaken7");
+            const validation = document.getElementById("validation7");
+
+            if (data.status) {
+              if (
+                data.status.includes(
+                  "PowerShell script executed with validation failure."
+                )
+              ) {
+                outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.status}</pre>`;
+                outputDiv.style.color = "red";
+                timeTakenTd.innerHTML = "Error";
+                validation.innerHTML = "Failed";
+                timeTakenTd.style.color = "red";
+                validation.style.color = "red";
+                window.run7Status = -1; // Mark as failed
+                window.run7Result = "failure";
+              } else {
+                outputDiv.innerHTML = `<strong>Completed</strong>`;
+                outputDiv.style.color = "green";
+                if (data.time_taken) {
+                  timeTakenTd.innerHTML = `${data.minutes} Min ${data.seconds} Sec ${data.milliseconds} Ms`; // Set the time taken
+                }
+                validation.innerHTML = "Successful";
+                timeTakenTd.style.color = "green";
+                validation.style.color = "green";
+                window.run7Status = 1; // Mark as successful
+                window.run7Result = "success";
+                run8Status = 0;
+                currentStep = 8; // Exit process
+                runNextStep();
+              }
+            } else if (data.error) {
+              outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.error}</pre>`;
+              outputDiv.style.color = "red";
+              timeTakenTd.innerHTML = "Error";
+              timeTakenTd.style.color = "red";
+              window.run7Status = -1; // Mark as failed
+              window.run7Result = "failure";
+            }
+          })
+          .catch((error) => {
+            console.error("Error running PowerShell:", error);
+            const outputDiv = document.getElementById("output7");
+            const timeTakenTd = document.getElementById("timeTaken7");
+            outputDiv.innerHTML = `<strong>Script Error:</strong><pre>${error.message}</pre>`;
+            outputDiv.style.color = "red";
+            timeTakenTd.innerHTML = "Error";
+            timeTakenTd.style.color = "red";
+            window.run7Status = -1; // Mark as failed
+            window.run7Result = "failure";
+          });
+      }
+
+      function runPowerShell8() {
+        setLastRoute("runPowerShell8");
+        const outputDiv = document.getElementById("output8");
+        outputDiv.innerHTML = `<strong>In progress</strong>`;
+        outputDiv.style.color = "orange";
+
+        // Ensure all prerequisite steps are completed before running this script
+        if (
+          window.run1Status !== 1 ||
+          window.run2Status !== 1 ||
+          window.run3Status !== 1 ||
+          window.run4Status !== 1 ||
+          window.run5Status !== 1 ||
+          window.run6Status !== 1 ||
+          window.run7Status !== 1
+        ) {
+          alert(
+            "Please run PowerShell, Untitled2.ps1, PowerShell3, PowerShell4, PowerShell5, PowerShell6, and PowerShell7 first."
+          );
+          return;
+        }
+
+        const folderCreated = sessionStorage.getItem("folderCreated");
+        if (!folderCreated) {
+          alert(
+            "First, create a folder by clicking the 'Submit Folder' button."
+          );
+          return;
+        }
+
+        const server = "{{ server }}";
+        const database = "{{ database }}";
+        const folderPath = document.getElementById("folderPath").value;
+
+        if (!folderPath) {
+          alert("Please provide a valid folder path.");
+          return;
+        }
+
+        fetch(
+          `/run_powershell8?server=${server}&database=${database}&folder_path=${encodeURIComponent(
+            folderPath
+          )}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            const outputDiv = document.getElementById("output8");
+            const timeTakenTd = document.getElementById("timeTaken8");
+            const validation = document.getElementById("validation8");
+
+            if (data.status) {
+              if (data.status.includes("Count mismatch.")) {
+                outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.status}</pre>`;
+                outputDiv.style.color = "red";
+                timeTakenTd.innerHTML = "Error";
+                validation.innerHTML = "Failed";
+                timeTakenTd.style.color = "red";
+                validation.style.color = "red";
+                window.run8Status = -1; // Mark as failed
+                window.run8Result = "Result";
+              } else {
+                outputDiv.innerHTML = `<strong>Completed</strong>`;
+                outputDiv.style.color = "green";
+                if (data.time_taken) {
+                  timeTakenTd.innerHTML = `${data.minutes} Min ${data.seconds} Sec ${data.milliseconds} Ms`;
+                }
+                validation.innerHTML = "Successful";
+                timeTakenTd.style.color = "green";
+                validation.style.color = "green";
+                window.run8Status = 1; // Mark as successful
+                window.run8Result = "success";
+                run9Status = 0;
+                currentStep = 9; // Exit process
+                runNextStep();
+              }
+            } else if (data.error) {
+              outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.error}</pre>`;
+              outputDiv.style.color = "red";
+              timeTakenTd.innerHTML = "Error";
+              timeTakenTd.style.color = "red";
+              window.run8Status = -1; // Mark as failed
+              window.run8Result = "failure";
+            }
+          })
+          .catch((error) => {
+            console.error("Error running PowerShell:", error);
+            const outputDiv = document.getElementById("output8");
+            const timeTakenTd = document.getElementById("timeTaken8");
+            outputDiv.innerHTML = `<strong>Script Error:</strong><pre>${error.message}</pre>`;
+            outputDiv.style.color = "red";
+            timeTakenTd.innerHTML = "Error";
+            timeTakenTd.style.color = "red";
+            window.run8Status = -1; // Mark as failed
+            window.run8Result = "failure";
+          });
+      }
+
+      function runPowerShell9() {
+        setLastRoute("runPowerShell9");
+        const outputDiv = document.getElementById("output9");
+        outputDiv.innerHTML = `<strong>In progress</strong>`;
+        outputDiv.style.color = "orange";
+
+        // Ensure all prerequisite steps are completed before running this script
+        if (
+          window.run1Status !== 1 ||
+          window.run2Status !== 1 ||
+          window.run3Status !== 1 ||
+          window.run4Status !== 1 ||
+          window.run5Status !== 1 ||
+          window.run6Status !== 1 ||
+          window.run7Status !== 1 ||
+          window.run8Status !== 1
+        ) {
+          alert(
+            "Please run PowerShell, Untitled2.ps1, PowerShell3, PowerShell4, PowerShell5, PowerShell6,Powershell7 and PowerShell8 first."
+          );
+          return;
+        }
+
+        const folderCreated = sessionStorage.getItem("folderCreated");
+        if (!folderCreated) {
+          alert(
+            "First, create a folder by clicking the 'Submit Folder' button."
+          );
+          return;
+        }
+
+        const server = "{{ server }}";
+        const database = "{{ database }}";
+        const folderPath = document.getElementById("folderPath").value;
+
+        if (!folderPath) {
+          alert("Please provide a valid folder path.");
+          return;
+        }
+
+        fetch(
+          `/run_powershell9?server=${server}&database=${database}&folder_path=${encodeURIComponent(
+            folderPath
+          )}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            const outputDiv = document.getElementById("output9");
+            const timeTakenTd = document.getElementById("timeTaken9");
+            const validation = document.getElementById("validation9");
+
+            if (data.status) {
+              if (data.status.includes("Fk table is not")) {
+                outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.status}</pre>`;
+                outputDiv.style.color = "red";
+                timeTakenTd.innerHTML = "Error";
+                validation.innerHTML = "Failed";
+                timeTakenTd.style.color = "red";
+                validation.style.color = "red";
+                window.run9Status = -1; // Mark as failed
+                window.run9Result = "failure";
+              } else {
+                outputDiv.innerHTML = `<strong>Completed</strong>`;
+                outputDiv.style.color = "green";
+                if (data.time_taken) {
+                  timeTakenTd.innerHTML = `${data.minutes} Min ${data.seconds} Sec ${data.milliseconds} Ms`;
+                }
+                validation.innerHTML = "Successful";
+                timeTakenTd.style.color = "green";
+                validation.style.color = "green";
+                window.run9Status = 1; // Mark as successful
+                window.run9Result = "success";
+                run10Status = 0;
+                currentStep = 10; // Exit process
+                runNextStep();
+              }
+            } else if (data.error) {
+              outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.error}</pre>`;
+              outputDiv.style.color = "red";
+              timeTakenTd.innerHTML = "Error";
+              timeTakenTd.style.color = "red";
+              window.run9Status = -1; // Mark as failed
+              window.run9Result = "failure";
+            }
+          })
+          .catch((error) => {
+            console.error("Error running PowerShell:", error);
+            const outputDiv = document.getElementById("output9");
+            const timeTakenTd = document.getElementById("timeTaken9");
+            outputDiv.innerHTML = `<strong>Script Error:</strong><pre>${error.message}</pre>`;
+            outputDiv.style.color = "red";
+            timeTakenTd.innerHTML = "Error";
+            timeTakenTd.style.color = "red";
+            window.run9Status = -1; // Mark as failed
+            window.run9Result = "failure";
+          });
+      }
+
+      function runPowerShell10() {
+        setLastRoute("runPowerShell10");
+        const outputDiv = document.getElementById("output10");
+        outputDiv.innerHTML = `<strong>In progress</strong>`;
+        outputDiv.style.color = "orange";
+
+        // Ensure all prerequisite steps are completed before running this script
+        if (
+          window.run1Status !== 1 ||
+          window.run2Status !== 1 ||
+          window.run3Status !== 1 ||
+          window.run4Status !== 1 ||
+          window.run5Status !== 1 ||
+          window.run6Status !== 1 ||
+          window.run7Status !== 1 ||
+          window.run8Status !== 1 ||
+          window.run9Status !== 1
+        ) {
+          alert(
+            "Please run PowerShell, Untitled2.ps1, PowerShell3, PowerShell4, PowerShell5, PowerShell6,Powershell7, PowerShell8 and PowerShell9 first."
+          );
+          return;
+        }
+
+        const folderCreated = sessionStorage.getItem("folderCreated");
+        if (!folderCreated) {
+          alert(
+            "First, create a folder by clicking the 'Submit Folder' button."
+          );
+          return;
+        }
+
+        const server = "{{ server }}";
+        const database = "{{ database }}";
+        const folderPath = document.getElementById("folderPath").value;
+
+        if (!folderPath) {
+          alert("Please provide a valid folder path.");
+          return;
+        }
+
+        fetch(
+          `/run_powershell10?server=${server}&database=${database}&folder_path=${encodeURIComponent(
+            folderPath
+          )}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            const outputDiv = document.getElementById("output10");
+            const timeTakenTd = document.getElementById("timeTaken10");
+            const validation = document.getElementById("validation10");
+
+            if (data.status) {
+              if (
+                data.status.includes("PowerShell script executed with errors")
+              ) {
+                outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.status}</pre>`;
+                outputDiv.style.color = "red";
+                timeTakenTd.innerHTML = "Error";
+                validation.innerHTML = "Failed";
+                timeTakenTd.style.color = "red";
+                validation.style.color = "red";
+                window.run10Status = -1; // Mark as failed
+                window.run10Result = "failure";
+              } else {
+                outputDiv.innerHTML = `<strong>Completed</strong>`;
+                outputDiv.style.color = "green";
+                if (data.time_taken) {
+                  timeTakenTd.innerHTML = `${data.minutes} Min ${data.seconds} Sec ${data.milliseconds} Ms`;
+                }
+                validation.innerHTML = "Successful";
+                timeTakenTd.style.color = "green";
+                validation.style.color = "green";
+                window.run10Status = 1; // Mark as successful
+                window.run10Result = "success";
+                run11Status = 0;
+                currentStep = 11; // Exit process
+                runNextStep();
+              }
+            } else if (data.error) {
+              outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.error}</pre>`;
+              outputDiv.style.color = "red";
+              timeTakenTd.innerHTML = "Error";
+              timeTakenTd.style.color = "red";
+              window.run10Status = -1; // Mark as failed
+              window.run10Result = "failure";
+            }
+          })
+          .catch((error) => {
+            console.error("Error running PowerShell:", error);
+            const outputDiv = document.getElementById("output10");
+            const timeTakenTd = document.getElementById("timeTaken10");
+            outputDiv.innerHTML = `<strong>Script Error:</strong><pre>${error.message}</pre>`;
+            outputDiv.style.color = "red";
+            timeTakenTd.innerHTML = "Error";
+            timeTakenTd.style.color = "red";
+            window.run10Status = -1; // Mark as failed
+            window.run10Result = "failure";
+          });
+      }
+      function runPowerShell11() {
+        setLastRoute("runPowerShell11");
+        const outputDiv = document.getElementById("output11");
+        outputDiv.innerHTML = `<strong>In progress</strong>`;
+        outputDiv.style.color = "orange";
+
+        // Ensure all prerequisite steps are completed before running this script
+        if (
+          window.run1Status !== 1 ||
+          window.run2Status !== 1 ||
+          window.run3Status !== 1 ||
+          window.run4Status !== 1 ||
+          window.run5Status !== 1 ||
+          window.run6Status !== 1 ||
+          window.run7Status !== 1 ||
+          window.run8Status !== 1 ||
+          window.run9Status !== 1 ||
+          window.run10Status !== 1
+        ) {
+          alert(
+            "Please run PowerShell, Untitled2.ps1, PowerShell3, PowerShell4, PowerShell5, PowerShell6,Powershell7, PowerShell8, PowerShell9 and Powershell10 first."
+          );
+          return;
+        }
+
+        const folderCreated = sessionStorage.getItem("folderCreated");
+        if (!folderCreated) {
+          alert(
+            "First, create a folder by clicking the 'Submit Folder' button."
+          );
+          return;
+        }
+
+        const server = "{{ server }}";
+        const database = "{{ database }}";
+        const folderPath = document.getElementById("folderPath").value;
+
+        if (!folderPath) {
+          alert("Please provide a valid folder path.");
+          return;
+        }
+
+        fetch(
+          `/run_powershell11?server=${server}&database=${database}&folder_path=${encodeURIComponent(
+            folderPath
+          )}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            const outputDiv = document.getElementById("output11");
+            const timeTakenTd = document.getElementById("timeTaken11");
+            const validation = document.getElementById("validation11");
+
+            if (data.status) {
+              if (
+                data.status.includes("PowerShell script executed with errors")
+              ) {
+                outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.status}</pre>`;
+                outputDiv.style.color = "red";
+                timeTakenTd.innerHTML = "Error";
+                validation.innerHTML = "Failed";
+                timeTakenTd.style.color = "red";
+                validation.style.color = "red";
+                window.run11Status = -1; // Mark as failed
+                windw.run11Result = "failure";
+              } else {
+                outputDiv.innerHTML = `<strong>Completed</strong>`;
+                outputDiv.style.color = "green";
+                if (data.time_taken) {
+                  timeTakenTd.innerHTML = `${data.minutes} Min ${data.seconds} Sec ${data.milliseconds} Ms`;
+                }
+                validation.innerHTML = "Successful";
+                timeTakenTd.style.color = "green";
+                validation.style.color = "green";
+                window.run11Status = 1; // Mark as successful
+                window.run11Result = "success";
+                run12Status = 0;
+                currentStep = 12; // Exit process
+                runNextStep(); // Exit process
+              }
+            } else if (data.error) {
+              outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.error}</pre>`;
+              outputDiv.style.color = "red";
+              timeTakenTd.innerHTML = "Error";
+              timeTakenTd.style.color = "red";
+              window.run11Status = -1; // Mark as failed
+              window.run11Result = "failure";
+            }
+          })
+          .catch((error) => {
+            console.error("Error running PowerShell:", error);
+            const outputDiv = document.getElementById("output11");
+            const timeTakenTd = document.getElementById("timeTaken11");
+            outputDiv.innerHTML = `<strong>Script Error:</strong><pre>${error.message}</pre>`;
+            outputDiv.style.color = "red";
+            timeTakenTd.innerHTML = "Error";
+            timeTakenTd.style.color = "red";
+            window.run11Status = -1; // Mark as failed
+            window.run11Result = "failure";
+          });
+      }
+      function runPowerShell12() {
+        setLastRoute("runPowerShell12");
+        const outputDiv = document.getElementById("output12");
+        outputDiv.innerHTML = `<strong>In progress</strong>`;
+        outputDiv.style.color = "orange";
+
+        // Ensure all prerequisite steps are completed before running this script
+        if (
+          window.run1Status !== 1 ||
+          window.run2Status !== 1 ||
+          window.run3Status !== 1 ||
+          window.run4Status !== 1 ||
+          window.run5Status !== 1 ||
+          window.run6Status !== 1 ||
+          window.run7Status !== 1 ||
+          window.run8Status !== 1 ||
+          window.run9Status !== 1 ||
+          window.run10Status !== 1 ||
+          window.run11Status !== 1
+        ) {
+          alert(
+            "Please run PowerShell, Untitled2.ps1, PowerShell3, PowerShell4, PowerShell5, PowerShell6, PowerShell7, PowerShell8, PowerShell9, PowerShell10, and PowerShell11 first."
+          );
+          return;
+        }
+
+        const folderCreated = sessionStorage.getItem("folderCreated");
+        if (!folderCreated) {
+          alert(
+            "First, create a folder by clicking the 'Submit Folder' button."
+          );
+          return;
+        }
+
+        const server = "{{ server }}";
+        const database = "{{ database }}";
+        const folderPath = document.getElementById("folderPath").value;
+
+        if (!folderPath) {
+          alert("Please provide a valid folder path.");
+          return;
+        }
+
+        fetch(
+          `/run_powershell12?server=${server}&database=${database}&folder_path=${encodeURIComponent(
+            folderPath
+          )}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            const outputDiv = document.getElementById("output12");
+            const timeTakenTd = document.getElementById("timeTaken12");
+            const validation = document.getElementById("validation12");
+
+            if (data.status === "completed") {
+              // Handle success
+              outputDiv.innerHTML = `<strong>Completed</strong>`;
+              outputDiv.style.color = "green";
+              if (data.time_taken) {
+                timeTakenTd.innerHTML = `${data.minutes} Min ${data.seconds} Sec ${data.milliseconds} Ms`;
+              }
+              validation.innerHTML = "Successful";
+              validation.style.color = "green";
+              timeTakenTd.style.color = "green";
+              window.run12Status = 1; // Mark as successful
+              window.run12Result = "success";
+              run13Status = 0;
+              currentStep = 13; // Exit process
+              runNextStep(); // Exit process
+            } else if (data.error) {
+              // Handle the error case
+              outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.error}</pre>`;
+              outputDiv.style.color = "red";
+              timeTakenTd.innerHTML = "Error";
+              timeTakenTd.style.color = "red";
+              validation.innerHTML = "Failed";
+              validation.style.color = "red";
+              window.run12Status = -1; // Mark as failed
+              window.run12Result = "failure";
+            }
+          })
+          .catch((error) => {
+            console.error("Error running PowerShell:", error);
+            const outputDiv = document.getElementById("output12");
+            const timeTakenTd = document.getElementById("timeTaken12");
+            outputDiv.innerHTML = `<strong>Script Error:</strong><pre>${error.message}</pre>`;
+            outputDiv.style.color = "red";
+            timeTakenTd.innerHTML = "Error";
+            timeTakenTd.style.color = "red";
+            window.run12Status = -1; // Mark as failed
+            window.run12Result = "failure";
+          });
+      }
+
+      function runPowerShell13() {
+        setLastRoute("runPowerShell13");
+        const outputDiv = document.getElementById("output13");
+        outputDiv.innerHTML = `<strong>In progress</strong>`;
+        outputDiv.style.color = "orange";
+
+        // Ensure all prerequisite steps are completed before running this script
+        if (
+          window.run1Status !== 1 ||
+          window.run2Status !== 1 ||
+          window.run3Status !== 1 ||
+          window.run4Status !== 1 ||
+          window.run5Status !== 1 ||
+          window.run6Status !== 1 ||
+          window.run7Status !== 1 ||
+          window.run8Status !== 1 ||
+          window.run9Status !== 1 ||
+          window.run10Status !== 1 ||
+          window.run11Status !== 1 ||
+          window.run12Status !== 1
+        ) {
+          alert(
+            "Please run PowerShell, Untitled2.ps1, PowerShell3, PowerShell4, PowerShell5, PowerShell6, PowerShell7, PowerShell8, PowerShell9, PowerShell10, PowerShell11 and POwershell12 first."
+          );
+          return;
+        }
+
+        const folderCreated = sessionStorage.getItem("folderCreated");
+        if (!folderCreated) {
+          alert(
+            "First, create a folder by clicking the 'Submit Folder' button."
+          );
+          return;
+        }
+
+        const server = "{{ server }}";
+        const database = "{{ database }}";
+        const folderPath = document.getElementById("folderPath").value;
+
+        if (!folderPath) {
+          alert("Please provide a valid folder path.");
+          return;
+        }
+
+        fetch(
+          `/run_powershell13?server=${server}&database=${database}&folder_path=${encodeURIComponent(
+            folderPath
+          )}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            const outputDiv = document.getElementById("output13");
+            const timeTakenTd = document.getElementById("timeTaken13");
+            const validation = document.getElementById("validation13");
+
+            if (data.status === "completed") {
+              // Handle success
+              outputDiv.innerHTML = `<strong>Completed</strong>`;
+              outputDiv.style.color = "green";
+              if (data.time_taken) {
+                timeTakenTd.innerHTML = `${data.minutes} Min ${data.seconds} Sec ${data.milliseconds} Ms`;
+              }
+              validation.innerHTML = "Successful";
+              validation.style.color = "green";
+              timeTakenTd.style.color = "green";
+              window.run13Status = 1; // Mark as successful
+              window.run13Result = "success";
+              run14Status = 0;
+              currentStep = 14; // Exit process
+              runNextStep(); // Exit process
+            } else if (data.error) {
+              // Handle the error case
+              outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.error}</pre>`;
+              outputDiv.style.color = "red";
+              timeTakenTd.innerHTML = "Error";
+              timeTakenTd.style.color = "red";
+              validation.innerHTML = "Failed";
+              validation.style.color = "red";
+              window.run13Status = -1; // Mark as failed
+              window.run13Result = "failure";
+            }
+          })
+          .catch((error) => {
+            console.error("Error running PowerShell:", error);
+            const outputDiv = document.getElementById("output13");
+            const timeTakenTd = document.getElementById("timeTaken13");
+            outputDiv.innerHTML = `<strong>Script Error:</strong><pre>${error.message}</pre>`;
+            outputDiv.style.color = "red";
+            timeTakenTd.innerHTML = "Error";
+            timeTakenTd.style.color = "red";
+            window.run13Status = -1; // Mark as failed
+            window.run13Result = "failure";
+          });
+      }
+      function runPowerShell14() {
+        setLastRoute("runPowerShell14");
+        const outputDiv = document.getElementById("output14");
+        outputDiv.innerHTML = `<strong>In progress</strong>`;
+        outputDiv.style.color = "orange";
+
+        // Ensure all prerequisite steps are completed before running this script
+        if (
+          window.run1Status !== 1 ||
+          window.run2Status !== 1 ||
+          window.run3Status !== 1 ||
+          window.run4Status !== 1 ||
+          window.run5Status !== 1 ||
+          window.run6Status !== 1 ||
+          window.run7Status !== 1 ||
+          window.run8Status !== 1 ||
+          window.run9Status !== 1 ||
+          window.run10Status !== 1 ||
+          window.run11Status !== 1 ||
+          window.run12Status !== 1 ||
+          window.run13Status !== 1
+        ) {
+          alert(
+            "Please run PowerShell, Untitled2.ps1, PowerShell3, PowerShell4, PowerShell5, PowerShell6, PowerShell7, PowerShell8, PowerShell9, PowerShell10, PowerShell11 ,Powershell12 and Powershell13 first."
+          );
+          return;
+        }
+
+        const folderCreated = sessionStorage.getItem("folderCreated");
+        if (!folderCreated) {
+          alert(
+            "First, create a folder by clicking the 'Submit Folder' button."
+          );
+          return;
+        }
+
+        const server = "{{ server }}";
+        const database = "{{ database }}";
+        const folderPath = document.getElementById("folderPath").value;
+
+        if (!folderPath) {
+          alert("Please provide a valid folder path.");
+          return;
+        }
+
+        fetch(
+          `/run_powershell14?server=${server}&database=${database}&folder_path=${encodeURIComponent(
+            folderPath
+          )}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            const outputDiv = document.getElementById("output14");
+            const timeTakenTd = document.getElementById("timeTaken14");
+            const validation = document.getElementById("validation14");
+
+            if (data.status === "completed") {
+              // Handle success
+
+              window.run14Status = 1; // Mark as successful
+              window.run14Result = "success";
+              run15Status = 0;
+              currentStep = 15; // Exit process
+              runNextStep(); // Exit process
+            } else if (data.error) {
+              // Handle the error case
+              outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.error}</pre>`;
+              outputDiv.style.color = "red";
+              timeTakenTd.innerHTML = "Error";
+              timeTakenTd.style.color = "red";
+              validation.innerHTML = "Failed";
+              validation.style.color = "red";
+              window.run14Status = -1; // Mark as failed
+              window.run14Result = "failure";
+            }
+          })
+          .catch((error) => {
+            console.error("Error running PowerShell:", error);
+            const outputDiv = document.getElementById("output14");
+            const timeTakenTd = document.getElementById("timeTaken14");
+            outputDiv.innerHTML = `<strong>Script Error:</strong><pre>${error.message}</pre>`;
+            outputDiv.style.color = "red";
+            timeTakenTd.innerHTML = "Error";
+            timeTakenTd.style.color = "red";
+            window.run14Status = -1; // Mark as failed
+            window.run14Result = "failure";
+          });
+      }
+
+      function runPowerShell15() {
+        setLastRoute("runPowerShell15");
+        const outputDiv = document.getElementById("output14");
+        outputDiv.innerHTML = `<strong>In progress</strong>`;
+        outputDiv.style.color = "orange";
+
+        // Ensure all prerequisite steps are completed before running this script
+        if (
+          window.run1Status !== 1 ||
+          window.run2Status !== 1 ||
+          window.run3Status !== 1 ||
+          window.run4Status !== 1 ||
+          window.run5Status !== 1 ||
+          window.run6Status !== 1 ||
+          window.run7Status !== 1 ||
+          window.run8Status !== 1 ||
+          window.run9Status !== 1 ||
+          window.run10Status !== 1 ||
+          window.run11Status !== 1 ||
+          window.run12Status !== 1 ||
+          window.run13Status !== 1 ||
+          window.run14Status !== 1
+        ) {
+          alert(
+            "Please run PowerShell, Untitled2.ps1, PowerShell3, PowerShell4, PowerShell5, PowerShell6, PowerShell7, PowerShell8, PowerShell9, PowerShell10, PowerShell11 ,Powershell12, Powershell13 and Powershell14 first."
+          );
+          return;
+        }
+
+        const folderCreated = sessionStorage.getItem("folderCreated");
+        if (!folderCreated) {
+          alert(
+            "First, create a folder by clicking the 'Submit Folder' button."
+          );
+          return;
+        }
+
+        const server = "{{ server }}";
+        const database = "{{ database }}";
+        const folderPath = document.getElementById("folderPath").value;
+
+        if (!folderPath) {
+          alert("Please provide a valid folder path.");
+          return;
+        }
+
+        fetch(
+          `/run_powershell15?server=${server}&database=${database}&folder_path=${encodeURIComponent(
+            folderPath
+          )}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            const outputDiv = document.getElementById("output14");
+            const timeTakenTd = document.getElementById("timeTaken14");
+            const validation = document.getElementById("validation14");
+
+            if (data.status === "completed") {
+              // Handle success
+
+              window.run15Status = 1; // Mark as successful
+              window.run15Result = "success";
+              run16Status = 0;
+              currentStep = 16; // Exit process
+              runNextStep(); // Exit process
+            } else if (data.error) {
+              // Handle the error case
+              outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.error}</pre>`;
+              outputDiv.style.color = "red";
+              timeTakenTd.innerHTML = "Error";
+              timeTakenTd.style.color = "red";
+              validation.innerHTML = "Failed";
+              validation.style.color = "red";
+
+              window.run15Status = -1; // Mark as failed
+              window.run15Result = "failure";
+            }
+          })
+          .catch((error) => {
+            console.error("Error running PowerShell:", error);
+            const outputDiv = document.getElementById("output14");
+            const timeTakenTd = document.getElementById("timeTaken14");
+            outputDiv.innerHTML = `<strong>Script Error:</strong><pre>${error.message}</pre>`;
+            outputDiv.style.color = "red";
+            timeTakenTd.innerHTML = "Error";
+            timeTakenTd.style.color = "red";
+            window.run15Status = -1; // Mark as failed
+            window.run15Result = "failure";
+          });
+      }
+
+      function runPowerShell16() {
+        setLastRoute("runPowerShell16");
+        const outputDiv = document.getElementById("output14");
+        outputDiv.innerHTML = `<strong>In progress</strong>`;
+        outputDiv.style.color = "orange";
+
+        // Ensure all prerequisite steps are completed before running this script
+        if (
+          window.run1Status !== 1 ||
+          window.run2Status !== 1 ||
+          window.run3Status !== 1 ||
+          window.run4Status !== 1 ||
+          window.run5Status !== 1 ||
+          window.run6Status !== 1 ||
+          window.run7Status !== 1 ||
+          window.run8Status !== 1 ||
+          window.run9Status !== 1 ||
+          window.run10Status !== 1 ||
+          window.run11Status !== 1 ||
+          window.run12Status !== 1 ||
+          window.run13Status !== 1 ||
+          window.run14Status !== 1 ||
+          window.run15Status !== 1
+        ) {
+          alert(
+            "Please run PowerShell, Untitled2.ps1, PowerShell3, PowerShell4, PowerShell5, PowerShell6, PowerShell7, PowerShell8, PowerShell9, PowerShell10, PowerShell11 ,Powershell12, Powershell13, Powershell14 and Powershell15 first."
+          );
+          return;
+        }
+
+        const folderCreated = sessionStorage.getItem("folderCreated");
+        if (!folderCreated) {
+          alert(
+            "First, create a folder by clicking the 'Submit Folder' button."
+          );
+          return;
+        }
+
+        const server = "{{ server }}";
+        const database = "{{ database }}";
+        const folderPath = document.getElementById("folderPath").value;
+
+        if (!folderPath) {
+          alert("Please provide a valid folder path.");
+          return;
+        }
+
+        fetch(
+          `/run_powershell16?server=${server}&database=${database}&folder_path=${encodeURIComponent(
+            folderPath
+          )}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            const outputDiv = document.getElementById("output14");
+            const timeTakenTd = document.getElementById("timeTaken14");
+            const validation = document.getElementById("validation14");
+            if (data.status === "completed") {
+              // Handle success
+              outputDiv.innerHTML = `<strong>Completed</strong>`;
+              outputDiv.style.color = "green";
+              if (data.time_taken) {
+                timeTakenTd.innerHTML = `${data.minutes} Min ${data.seconds} Sec ${data.milliseconds} Ms`;
+              }
+              validation.innerHTML = "Successful";
+              validation.style.color = "green";
+              timeTakenTd.style.color = "green";
+
+              window.run16Status = 1; // Mark as successful
+              window.run16Result = "success";
+            } else if (data.error) {
+              // Handle the error case
+              outputDiv.innerHTML = `<strong>Error:</strong><pre>${data.error}</pre>`;
+              outputDiv.style.color = "red";
+              timeTakenTd.innerHTML = "Error";
+              timeTakenTd.style.color = "red";
+              validation.innerHTML = "Failed";
+              validation.style.color = "red";
+
+              window.run16Status = -1; // Mark as failed
+              window.run16Result = "failure";
+            }
+          })
+          .catch((error) => {
+            console.error("Error running PowerShell:", error);
+            const outputDiv = document.getElementById("output14");
+            const timeTakenTd = document.getElementById("timeTaken14");
+            outputDiv.innerHTML = `<strong>Script Error:</strong><pre>${error.message}</pre>`;
+            outputDiv.style.color = "red";
+            timeTakenTd.innerHTML = "Error";
+            timeTakenTd.style.color = "red";
+            window.run16Status = -1; // Mark as failed
+            window.run16Result = "failure";
+          });
+      }
+
+      let isPaused = false; // Flag to track whether the process is paused
+      let pausedStep = 0; // Track the step where it was paused
+
+      //let runPowerShell7Counter = 0; // Initialize a counter for runPowerShell7
+
+      function runNextStep() {
+        if (isPaused) return; // If paused, do not run any steps
+
+        if (Array.isArray(window.selectedSteps) && window.selectedSteps.length > 0) {
+          const next = window.selectedSteps.find(s => s >= currentStep);
+          if (!next) return; // No further selected steps
+          currentStep = next;
+        }
+
+        switch (currentStep) {
+          case 0:
+            return; // No step to run
+          case 1:
+            runPowerShell1();
+            break;
+          case 2:
+            runPowerShell2();
+            break;
+          case 3:
+            runPowerShell3();
+            break;
+          case 4:
+            runPowerShell4();
+            break;
+          case 5:
+            runPowerShell5();
+            break;
+          case 6:
+            runPowerShell6();
+            break;
+          case 7:
+            runPowerShell7();
+            break;
+          case 8:
+            // Run PowerShell7 three times
+
+            runPowerShell8(); // Call runPowerShell7
+
+            break;
+          case 9:
+            runPowerShell9(); // Run PowerShell8 after 3 executions of PowerShell7
+            break;
+          case 10:
+            runPowerShell10(); // Run PowerShell9 after 3 executions of PowerShell7
+            break;
+          case 11:
+            runPowerShell11(); // Run PowerShell9 after 3 executions of PowerShell7
+            break;
+          case 12:
+            runPowerShell12();
+            break;
+          case 13:
+            runPowerShell13();
+            break;
+          case 14:
+            runPowerShell14();
+            break;
+          case 15:
+            runPowerShell15();
+            break;
+          case 16:
+            runPowerShell16();
+            break;
+          //case 17:
+          //runPowerShell17();
+          // break;
+          default:
+            return; // Invalid step
+        }
+      }
+
+      function executeNextStep() {
+        const selected = Array.from(document.querySelectorAll('.db-step-checkbox:checked'))
+          .map(cb => parseInt(cb.dataset.step, 10))
+          .filter(n => !isNaN(n))
+          .sort((a, b) => a - b);
+
+        if (selected.length > 0) {
+          window.selectedSteps = selected;
+          currentStep = selected[0];
+        } else {
+          window.selectedSteps = null;
+          if (currentStep === 0) {
+            currentStep = 1; // Start with PowerShell
+          }
+        }
+        runNextStep();
+      }
+
+      function pauseExecution() {
+        isPaused = true; // Set the paused flag to true
+        pausedStep = currentStep; // Record the step where it was paused
+      }
+
+      function resumeExecution() {
+        isPaused = false; // Set the paused flag to false
+        currentStep = pausedStep; // Resume from the paused step
+        runNextStep();
+      }
+
+      // Function to trigger the file browse dialog
+      function triggerFileBrowse() {
+        document.getElementById("fileInput").click();
+      }
+
+      // Function to read the content of the selected .txt file
+      function readFileContent(event) {
+        const file = event.target.files[0]; // Get the selected file
+        if (file && file.type === "text/plain") {
+          const reader = new FileReader();
+
+          reader.onload = function (e) {
+            const fileContent = e.target.result;
+            document.getElementById("fileContent").textContent = fileContent; // Display content in the frontend
+          };
+
+          reader.onerror = function (e) {
+            alert("Error reading file: " + e.target.error);
+          };
+
+          reader.readAsText(file); // Read file as text
+        } else {
+          alert("Please select a valid .txt file.");
+        }
+      }
+    </script>
+    <script>
+      function updateRunButtonLabel() {
+        const anyChecked = document.querySelectorAll('.db-step-checkbox:checked').length > 0;
+        const btnText = document.getElementById('runButtonText');
+        if (btnText) btnText.textContent = anyChecked ? 'Run' : 'Run All Steps';
+      }
+
+      function syncStep10Input() {
+        const anyChecked = document.querySelectorAll('.db-step-checkbox:checked').length > 0;
+        const step10Checked = document.getElementById('step-select-10')?.checked;
+        const input = document.getElementById('step10TableFiles');
+        if (input) {
+          // Enabled by default (no selections). In selective mode, enable only if step 10 is selected.
+          const shouldEnable = !anyChecked || !!step10Checked;
+          input.disabled = !shouldEnable;
+        }
+      }
+
+      function clearSelections() {
+        document.querySelectorAll('.db-step-checkbox').forEach(cb => cb.checked = false);
+        window.selectedSteps = null;
+        updateRunButtonLabel();
+        syncStep10Input();
+      }
+
+      function initStepSelections() {
+        document.querySelectorAll('.db-step-checkbox').forEach(cb => {
+          cb.addEventListener('change', () => {
+            updateRunButtonLabel();
+            syncStep10Input();
+          });
+        });
+        updateRunButtonLabel();
+        syncStep10Input();
+      }
+
+      document.addEventListener('DOMContentLoaded', initStepSelections);
+    </script>
+
+    <script>
+      function runPowerShell114() {
+        // Ensure prerequisite steps are completed before running the request
+
+        const server = "{{ server }}";
+        const database = "{{ database }}";
+        const folderPath = document.getElementById("folderPath").value;
+
+        if (!server || !database) {
+          alert(
+            "Server and Database are required to run the PowerShell script!"
+          );
+          return;
+        }
+
+        // Send a GET request to the backend API to trigger the PowerShell script
+        fetch(
+          `/run_powershell15?server=${server}&database=${database}&folder_path=${encodeURIComponent(
+            folderPath
+          )}`
+        )
+          .then((response) => response.json()) // Parse JSON response
+          .then((data) => {
+            if (data.error) {
+              console.error("Error:", data.error);
+              alert("An error occurred: " + data.error);
+            } else {
+              console.log("PowerShell script executed successfully.");
+              console.log("Execution time:", data.time_taken);
+              //alert("PowerShell script executed successfully.\nExecution time: " + data.time_taken + " seconds.");
+            }
+          })
+          .catch((error) => {
+            console.error("Request failed:", error.message);
+            alert("Request failed: " + error.message);
+          });
+      }
+    </script>
+    <script>
+      function runPowerShell115() {
+        // Ensure prerequisite steps are completed before running the request
+
+        const server = "{{ server }}";
+        const database = "{{ database }}";
+        const folderPath = document.getElementById("folderPath").value;
+
+        if (!server || !database) {
+          alert(
+            "Server and Database are required to run the PowerShell script!"
+          );
+          return;
+        }
+
+        // Send a GET request to the backend API to trigger the PowerShell script
+        fetch(
+          `/run_powershell16?server=${server}&database=${database}&folder_path=${encodeURIComponent(
+            folderPath
+          )}`
+        )
+          .then((response) => response.json()) // Parse JSON response
+          .then((data) => {
+            if (data.error) {
+              console.error("Error:", data.error);
+              alert("An error occurred: " + data.error);
+            } else {
+              console.log("PowerShell script executed successfully.");
+              console.log("Execution time:", data.time_taken);
+              //alert("PowerShell script executed successfully.\nExecution time: " + data.time_taken + " seconds.");
+            }
+          })
+          .catch((error) => {
+            console.error("Request failed:", error.message);
+            alert("Request failed: " + error.message);
+          });
+      }
+    </script>
+    <script>
+      // Extract database from URL and store in a hidden input
+      (function injectDatabaseNameFromURL() {
+        const params = new URLSearchParams(window.location.search);
+        const dbFromURL = params.get("database");
+
+        if (dbFromURL) {
+          let dbInput = document.getElementById("database_name");
+          if (!dbInput) {
+            dbInput = document.createElement("input");
+            dbInput.type = "hidden";
+            dbInput.id = "database_name";
+            dbInput.value = dbFromURL;
+            document.body.appendChild(dbInput);
+          } else {
+            dbInput.value = dbFromURL; // In case it's already there but empty
+          }
+        } else {
+          console.warn("❌ No database found in URL.");
+        }
+      })();
+    </script>
+
+    <script>
+      // Initialize state for steps 1–16
+      for (let i = 1; i <= 14; i++) {
+        window[`run${i}Status`] = 0;
+        window[`run${i}Result`] = "";
+      }
+
+      window._lastRoute = null;
+
+      function collectAppState() {
+        const state = {};
+
+        document
+          .querySelectorAll("input, select, textarea")
+          .forEach((input) => {
+            const key = input.id || input.name || input.className;
+            if (key) state[key] = input.value;
+          });
+
+        state.database_name =
+          document.getElementById("database_name")?.value || ""; // Add this
+        state._stepStatuses = {};
+        state._stepResults = {};
+
+        for (let i = 1; i <= 14; i++) {
+          state._stepStatuses[`run${i}Status`] = window[`run${i}Status`];
+          state._stepResults[`run${i}Result`] = window[`run${i}Result`];
+        }
+
+        state._lastRoute = window._lastRoute || null;
+
+        return state;
+      }
+
+      function restoreAppState(state) {
+        document
+          .querySelectorAll("input, select, textarea")
+          .forEach((input) => {
+            const key = input.id || input.name || input.className;
+            if (state[key] !== undefined) {
+              input.value = state[key];
+            }
+          });
+
+        if (state._stepStatuses && state._stepResults) {
+          for (let i = 1; i <= 16; i++) {
+            const statusKey = `run${i}Status`;
+            const resultKey = `run${i}Result`;
+
+            const outputDiv = document.getElementById(
+              i > 14 ? "output14" : `output${i}`
+            );
+            const timeTaken = document.getElementById(
+              i > 14 ? "timeTaken14" : `timeTaken${i}`
+            );
+            const validation = document.getElementById(
+              i > 14 ? "validation14" : `validation${i}`
+            );
+
+            if (!outputDiv) {
+              console.warn(`Element output${i} not found`);
+              continue;
+            }
+
+            if (statusKey in state._stepStatuses) {
+              window[statusKey] = Number(state._stepStatuses[statusKey]);
+            }
+
+            if (resultKey in state._stepResults) {
+              window[resultKey] = state._stepResults[resultKey];
+
+              if (window[statusKey] !== 0) {
+                if (
+                  window[resultKey] === "success" ||
+                  window[resultKey] === "Success"
+                ) {
+                  outputDiv.innerHTML = `<strong>Completed</strong>`;
+                  outputDiv.style.color = "green";
+                  if (validation) {
+                    validation.innerText = "Successful";
+                    validation.style.color = "green";
+                  }
+                  if (timeTaken) {
+                    timeTaken.innerText = "Restored";
+                    timeTaken.style.color = "green";
+                  }
+                } else if (
+                  window[resultKey] === "fail" ||
+                  window[resultKey] === "failure" ||
+                  window[resultKey] === "Failure"
+                ) {
+                  outputDiv.innerHTML = `<strong>Failed</strong>`;
+                  outputDiv.style.color = "red";
+                  if (validation) {
+                    validation.innerText = "Failed";
+                    validation.style.color = "red";
+                  }
+                  if (timeTaken) {
+                    timeTaken.innerText = "Error";
+                    timeTaken.style.color = "red";
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        if (state._lastRoute) {
+          window._lastRoute = state._lastRoute;
+          console.log("Restored last route:", window._lastRoute);
+        }
+
+        let foundNext = false;
+        for (let i = 1; i <= 14; i++) {
+          const status = window[`run${i}Status`];
+          if (status === -1 || status === 0) {
+            currentStep = i;
+            foundNext = true;
+            console.log("Next step set to:", currentStep);
+            break;
+          }
+        }
+        if (!foundNext) {
+          currentStep = 0;
+        }
+      }
+
+      function autoSaveApp() {
+        const state = collectAppState();
+        fetch("/autosave", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(state),
+        })
+          .then((res) => res.json())
+          .then((data) => console.log("App auto-saved"));
+      }
+
+      function loadSavedState() {
+        const dbName = document.getElementById("database_name")?.value || "";
+        if (!dbName) return;
+
+        fetch(`/recover_state?database_name=${encodeURIComponent(dbName)}`)
+          .then((res) => res.json())
+          .then((state) => {
+            restoreAppState(state);
+            console.log("App state restored");
+          });
+      }
+
+      window.onload = loadSavedState;
+      setInterval(autoSaveApp, 3000);
+
+      function setLastRoute(routeName) {
+        window._lastRoute = routeName;
+      }
+    </script>
+    <script>
+      function resetApp() {
+        const dbName = document.getElementById("database_name")?.value || "";
+        if (!dbName) {
+          alert("Database name is required to reset.");
+          return;
+        }
+
+        if (
+          confirm(
+            "⚠️ This will erase all your progress and reload the app fresh.\nAre you sure?"
+          )
+        ) {
+          allowAutoSave = false;
+
+          fetch("/delete_progress", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ database_name: dbName }),
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              if (data.status === "deleted") {
+                alert("Progress reset. Reloading...");
+                sessionStorage.clear();
+                location.reload(true);
+              } else {
+                alert("Failed to reset progress.");
+              }
+            })
+            .catch((err) => {
+              console.error("Reset failed:", err);
+              alert("Error occurred while resetting progress.");
+            });
+        }
+      }
+    </script>
+    <script>
+      window.addEventListener('beforeunload', function () {
+        const data = JSON.stringify({
+          page: window.location.pathname,
+          timestamp: new Date().toISOString()
+        });
+
+        // 👇 This is CRITICAL: content type must be application/json
+        const blob = new Blob([data], { type: 'application/json' });
+        navigator.sendBeacon('/log-exit', blob);
+      });
+    </script>
+
+    <script>
+      // Toggle configuration panel
+      function toggleConfig() {
+        const content = document.getElementById('configContent');
+        const toggle = document.querySelector('.db-config-toggle');
+        const chevron = document.getElementById('configChevron');
+
+        if (content.style.display === 'none' || content.style.display === '') {
+          content.style.display = 'block';
+          toggle.classList.add('active');
+          // Change to down arrow
+          chevron.innerHTML = '<polyline points="6 9 12 15 18 9"></polyline>';
+        } else {
+          content.style.display = 'none';
+          toggle.classList.remove('active');
+          // Change to right arrow
+          chevron.innerHTML = '<polyline points="9 18 15 12 9 6"></polyline>';
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', function () {
+        const now = new Date().toISOString();
+        const page = window.location.pathname;
+
+        fetch('/log-entry', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            page: page,
+            timestamp: now
+          })
+        });
+      });
+    </script>
+
+</body>
+
+</html>

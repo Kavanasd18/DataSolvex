@@ -1,0 +1,97 @@
+{#
+DataSolveX Inventory Shell Header
+Inventory is mounted under /inventory-mgmt
+#}
+<style>
+  /* breadcrumb row: left crumbs + right actions */
+  .breadcrumb-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .breadcrumb-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+  }
+
+  /* white button */
+  .breadcrumb-btn-white {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border: 1px solid rgba(148, 163, 184, 0.45) !important;
+    border-radius: 10px;
+    padding: 6px 10px;
+    font-weight: 600;
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
+  }
+
+  .breadcrumb-btn-white:hover {
+    background: #f8fafc !important;
+    border-color: rgba(148, 163, 184, 0.65) !important;
+  }
+
+  .breadcrumb-btn-text-white {
+    color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.35) !important;
+    /* optional */
+  }
+
+  .breadcrumb-action-link {
+    color: #ffffff !important;
+    text-decoration: none;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 10px;
+  }
+
+  .breadcrumb-action-link:hover {
+    color: #ffffff !important;
+    background: rgba(255, 255, 255, 0.12);
+  }
+</style>
+<header class="app-header">
+
+  <!-- TOP BAR -->
+  <div class="app-nav">
+    <div class="app-nav-container">
+      <a class="app-brand" href="/index">DataSolveX</a>
+    </div>
+  </div>
+
+  <!-- BREADCRUMB BAR -->
+  <div class="app-breadcrumb">
+    <div class="app-breadcrumb-container breadcrumb-row">
+      <ul class="breadcrumb-list">
+        {% if breadcrumb and breadcrumb|length > 0 %}
+        {% for c in breadcrumb %}
+        <li class="breadcrumb-item {% if c.active %}active{% endif %}">
+          {% if c.href and not c.active %}
+          <a href="{{ c.href }}">{{ c.label }}</a>
+          {% else %}
+          <span>{{ c.label }}</span>
+          {% endif %}
+        </li>
+        {% endfor %}
+        {% else %}
+        <li class="breadcrumb-item">
+          <a href="/sqlserver_main">SQL Server Main</a>
+        </li>
+        <li class="breadcrumb-item active">
+          Inventory Management
+        </li>
+        {% endif %}
+      </ul>
+
+      <div class="breadcrumb-actions">
+        {% if breadcrumb_actions is defined %}
+        {{ breadcrumb_actions }}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</header>

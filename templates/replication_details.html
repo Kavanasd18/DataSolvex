@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>SQL Replication Dashboard</title>
+  <!-- Global + Replication CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='global.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='replication.css') }}" />
+</head>
+
+<body class="replication-summary-page">
+  <!-- Unified App Header with Breadcrumb (same style as other pages) -->
+  <header class="app-header">
+    <!-- Top nav bar -->
+    <div class="app-nav">
+      <div class="app-nav-container">
+        <a href="{{ url_for('dashboard') }}" class="app-brand">DataSolveX</a>
+        <ul class="app-nav-menu">
+        </ul>
+      </div>
+    </div>
+
+    <!-- Breadcrumb bar -->
+    <div class="app-breadcrumb">
+      <div class="app-breadcrumb-container">
+        <ul class="breadcrumb-list">
+          <li class="breadcrumb-item">
+            <a href="{{ url_for('sqlserver_main') }}">SQL Server Main</a>
+          </li>
+          <li class="breadcrumb-item">
+            <a href="{{ url_for('dashboard') }}">Replication</a>
+          </li>
+          <li class="breadcrumb-item active">
+            Replication Details
+          </li>
+        </ul>
+
+        <div class="breadcrumb-actions">
+          <a href="{{ url_for('dashboard_summary') }}" class="app-nav-link breadcrumb-link">
+            Summary
+          </a>
+          <a href="{{ url_for('dashboard_summary') }}" onclick="location.reload(); return false;" class="breadcrumb-link">
+            Refresh
+          </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Page content -->
+  <div class="container">
+    <main class="page-content">
+      <div class="container">
+
+        <!-- Top toolbar: Back + Title (left) | Details/Summary/Refresh (right) -->
+        <div class="d-flex justify-between align-center mb-3 mt-3">
+          <!-- Left side: Back + page title -->
+          <div class="d-flex align-center gap-md">
+
+            <h2 class="section-title m-0">Replication Details</h2>
+          </div>
+          </div>
+
+        <!-- Table card -->
+        <div class="table-container">
+          <div class="filters-row">
+            <input type="text" id="publication_name_filter" class="filter-input"
+              placeholder="Filter by Publication Name" onkeyup="filterTable()" />
+            <input type="text" id="article_filter" class="filter-input" placeholder="Filter by Article"
+              onkeyup="filterTable()" />
+          </div>
+
+          {{ table | safe }}
+        </div>
+      </div>
+    </main>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-content">
+        <div class="footer-bottom">
+          Replication Dashboard · DataSolveX
+        </div>
+      </div>
+    </footer>
+
+
+    <!-- Filtering logic (unchanged) -->
+    <script>
+      // Jinja injects these as plain numbers
+      const PUB_COL_INDEX = Number('{{ pub_col_index }}');
+      const ART_COL_INDEX = Number('{{ art_col_index }}');
+
+      function filterTable() {
+        const pubFilter = document
+          .getElementById("publication_name_filter")
+          .value.toLowerCase();
+        const artFilter = document
+          .getElementById("article_filter")
+          .value.toLowerCase();
+        const table = document.getElementById("sql_table");
+        if (!table) return;
+
+        const rows = table.getElementsByTagName("tr");
+
+        // start from 1 to skip header
+        for (let i = 1; i < rows.length; i++) {
+          const cells = rows[i].getElementsByTagName("td");
+          const tdPub = cells[PUB_COL_INDEX];
+          const tdArt = cells[ART_COL_INDEX];
+
+          let showRow = true;
+
+          if (
+            tdPub &&
+            pubFilter &&
+            tdPub.innerText.toLowerCase().indexOf(pubFilter) === -1
+          ) {
+            showRow = false;
+          }
+
+          if (
+            tdArt &&
+            artFilter &&
+            tdArt.innerText.toLowerCase().indexOf(artFilter) === -1
+          ) {
+            showRow = false;
+          }
+
+          rows[i].style.display = showRow ? "" : "none";
+        }
+      }
+    </script>
+
+    <!-- Exit logging -->
+    <script>
+      window.addEventListener('beforeunload', function () {
+        const data = JSON.stringify({
+          page: window.location.pathname,
+          timestamp: new Date().toISOString()
+        });
+
+        const blob = new Blob([data], { type: 'application/json' });
+        navigator.sendBeacon('/log-exit', blob);
+      });
+    </script>
+
+    <!-- Entry logging -->
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const now = new Date().toISOString();
+        const page = window.location.pathname;
+
+        fetch('/log-entry', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            page: page,
+            timestamp: now
+          })
+        });
+      });
+    </script>
+</body>
+
+</html>

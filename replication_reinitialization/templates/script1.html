@@ -1,0 +1,1033 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Replication Drop & Script (Script 1)</title>
+
+  <link rel="stylesheet" href="{{url_for('replication.static',filename='global.css')}}" />
+  <link rel="stylesheet" href="{{url_for('replication.static',filename='reinit.css')}}" />
+
+  <style>
+    .card-simple {
+      padding: 18px;
+    }
+
+    .mt-4 {
+      margin-top: 18px;
+    }
+
+    .mt-2 {
+      margin-top: 10px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px 16px;
+      margin-top: 6px;
+    }
+
+    .form-grid .form-group {
+      margin: 0;
+    }
+
+    #result-panel {
+      display: none !important
+    }
+
+    @media (max-width: 860px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 6px;
+      opacity: 0.92;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      outline: none;
+    }
+
+    .form-group input:focus {
+      border-color: rgba(0, 0, 0, 0.22);
+      box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.06);
+    }
+
+    .form-actions {
+      margin-top: 14px;
+    }
+
+    .btn-primary.btn-block {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+    }
+
+    .run-progress {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(0, 0, 0, 0.10);
+      background: rgba(255, 255, 255, 0.65);
+    }
+
+    .run-progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+    }
+
+    .progress.progress-lg {
+      height: 10px;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      border-radius: 999px;
+      width: 0%;
+    }
+
+    .console-wrap {
+      margin-top: 14px;
+    }
+
+    .console-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+
+    #exec-console {
+      width: 100%;
+      min-height: 180px;
+      max-height: 260px;
+      resize: vertical;
+      padding: 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      background: rgba(255, 255, 255, 0.75);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12.5px;
+      line-height: 1.45;
+    }
+
+    .table-wrap {
+      margin-top: 10px;
+    }
+
+    .table.table-compact th,
+    .table.table-compact td {
+      padding: 8px 10px;
+    }
+
+    .alert {
+      margin-top: 12px;
+    }
+
+    .alert:first-child {
+      margin-top: 0;
+    }
+
+    .d-none {
+      display: none !important;
+    }
+
+    /* -------------------------------
+       LOGS MODAL - centered + scroll
+    -------------------------------- */
+  </style>
+</head>
+
+<body class="replication-summary-page">
+  <header class="app-header">
+    <div class="app-nav">
+      <div class="app-nav-container">
+        <a href="{{ url_for('index') }}" class="app-brand">DataSolveX</a>
+        <ul class="app-nav-menu"></ul>
+      </div>
+    </div>
+
+    <div class="app-breadcrumb">
+      <div class="app-breadcrumb-container">
+        <ul class="breadcrumb-list">
+          <li class="breadcrumb-item"><a href="{{ url_for('sqlserver_main') }}">SQL Server Main</a></li>
+          <li class="breadcrumb-item"><a href="{{ url_for('replication.home') }}">home</a></li>
+          <li class="breadcrumb-item active">Replication Drop</li>
+        </ul>
+
+        <div class="breadcrumb-actions">
+          <a href="{{ url_for('replication.script1') }}" class="app-nav-link breadcrumb-link">Script1</a>
+          <a href="{{ url_for('replication.script2') }}" class="app-nav-link breadcrumb-link">Script2</a>
+          <a href="#" id="open-logs" class="app-nav-link breadcrumb-link">logs</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="page-wrapper">
+    <main class="page-content">
+      <div class="container-sm">
+        <header class="page-header">
+          <h1 class="page-title">Replication Drop & Script (Script 1)</h1>
+        </header>
+
+        <section class="card-simple">
+          <form id="script1-form" method="POST" action="{{url_for('replication.run_script1_stream')}}">
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="InstanceName">Distributor Instance (InstanceName)</label>
+                <input type="text" id="InstanceName" name="InstanceName" placeholder="e.g. ISCLS8DBT5\\DIST" required />
+              </div>
+
+              <div class="form-group">
+                <label for="TablesFilePath">Tables File Path (TablesFilePath)</label>
+                <input type="text" id="TablesFilePath" name="TablesFilePath"
+                  placeholder="e.g. E:\\Repl Reint\\names.txt" required />
+              </div>
+
+              <div class="form-group">
+                <label for="OutputPath">Output Path for Scripts (OutputPath)</label>
+                <input type="text" id="OutputPath" name="OutputPath" placeholder="e.g. E:\\Repl Reint" required />
+              </div>
+
+              <div class="form-group">
+                <label for="ReinitInstance">Reinitialization Instance (ReinitInstance)</label>
+                <input type="text" id="ReinitInstance" name="ReinitInstance"
+                  placeholder="e.g. ISCLSDBT07\\INST7 (optional)" />
+              </div>
+
+              <div class="form-group">
+                <label for="LogInstance">Log Instance (LogInstance)</label>
+                <input type="text" id="LogInstance" name="LogInstance" placeholder="e.g. ISMGMTDBP02\\INST1" />
+              </div>
+
+              <div class="form-group">
+                <label for="LogDatabase">Log Database (LogDatabase)</label>
+                <input type="text" id="LogDatabase" name="LogDatabase" placeholder="e.g. DBRefresh" />
+              </div>
+
+              <div class="form-group">
+                <label for="LogTable">Log Table (LogTable)</label>
+                <input type="text" id="LogTable" name="LogTable" placeholder="e.g. repl_log" />
+              </div>
+            </div>
+
+            <div id="run-progress" class="run-progress d-none">
+              <div class="run-progress-header">
+                <span class="font-weight-semibold">Execution</span>
+                <span id="run-progress-text" class="text-gray">Starting…</span>
+              </div>
+              <div class="progress progress-lg mt-2">
+                <div id="run-progress-bar" class="progress-bar"></div>
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button id="run-btn" type="submit" class="btn-primary btn-block">Run Replication Drop</button>
+            </div>
+          </form>
+
+          <div class="console-wrap">
+            <div class="console-title">
+              <label class="font-weight-semibold">Execute Console</label>
+            </div>
+            <textarea id="exec-console" readonly placeholder="PowerShell output will stream here live…"></textarea>
+          </div>
+        </section>
+
+        <section id="result-panel" class="card-simple mt-4 d-none">
+          <h2 class="font-size-lg font-weight-bold mb-2">Result</h2>
+          <div id="validation-block"></div>
+          <div id="tablecount-block"></div>
+          <div id="agentstatus-block"></div>
+          <div id="finalstatus-block"></div>
+        </section>
+
+        <section class="card-simple mt-4">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
+            <h2 class="font-size-lg font-weight-bold" style="margin:0;">Recent Executions</h2>
+            <button id="recent-refresh-btn" type="button" class="btn-secondary"
+              style="padding:8px 12px;border-radius:10px;">
+              Refresh
+            </button>
+          </div>
+
+          <div class="table-wrap mt-2">
+            <div class="table-scroll">
+              <table class="table table-compact">
+                <thead>
+                  <tr>
+                    <th class="col-small">Dropped On</th>
+                    <th class="col-medium">Table</th>
+                    <th class="col-medium">Publication Dropped</th>
+                    <th class="col-medium">Instance</th>
+                    <th class="col-small">User</th>
+                    <th class="col-medium">Reinit Instance</th>
+                    <th class="col-medium">Publication Reinitialized</th>
+                  </tr>
+                </thead>
+
+                <tbody id="recent-tbody">
+                  <tr>
+                    <td colspan="7" class="text-center text-gray">Fill log inputs and click Refresh…</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-content">
+        <div class="footer-bottom">Replication Control · DataSolveX</div>
+      </div>
+    </footer>
+  </div>
+
+  <script>
+    function esc(s) {
+      return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+      }[c]));
+    }
+
+    function pad2(n) { return String(n).padStart(2, "0"); }
+    function fmtTime(sec) {
+      sec = Math.max(0, parseInt(sec || 0, 10));
+      return `${pad2(Math.floor(sec / 60))}:${pad2(sec % 60)}`;
+    }
+
+    async function loadRecentFromReplLog() {
+      const tbody = document.getElementById("recent-tbody");
+      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-gray">Loading…</td></tr>`;
+
+      try {
+        const li = document.getElementById("LogInstance")?.value?.trim() || "";
+        const ld = document.getElementById("LogDatabase")?.value?.trim() || "";
+        const lt = document.getElementById("LogTable")?.value?.trim() || "";
+        const qp = (!li || !ld || !lt)
+          ? `limit=5`
+          : `log_instance=${encodeURIComponent(li)}&log_database=${encodeURIComponent(ld)}&log_table=${encodeURIComponent(lt)}&limit=5`;
+
+        const params = new URLSearchParams();
+
+        params.set("limit", "5");
+
+        if (li) params.set("log_instance", li);
+
+        if (ld) params.set("log_database", ld);
+
+        if (lt) params.set("log_table", lt);
+
+        const base = `{{ url_for('replication.api_repl_log_recent') }}`;
+
+        const url = `${base}?${params.toString()}`;
+
+        const resp = await fetch(url, { cache: "no-store" });
+        const data = await resp.json();
+
+        if (!data || !data.length) {
+          tbody.innerHTML = `<tr><td colspan="7" class="text-center text-gray">No rows found.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = data.map(r => `
+          <tr>
+            <td>${esc(r.dropped_on || "NA")}</td>
+            <td>${esc(r.table_name || "NA")}</td>
+            <td>${esc(r.publication_dropped || "NA")}</td>
+            <td>${esc(r.instance_name || "NA")}</td>
+            <td>${esc(r.user || "NA")}</td>
+            <td>${esc(r.reinitialized_instance_name || "NA")}</td>
+            <td>${esc(r.publication_reinitialized || "NA")}</td>
+          </tr>
+        `).join("");
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-gray">Failed to load recent executions.</td></tr>`;
+      }
+    }
+
+    /* ----------------------------
+       Logs Filters - helpers
+    ----------------------------- */
+    function isDateLikeColumn(colName) {
+      const c = (colName || "").toLowerCase();
+
+      // catch your real column names
+      return (
+        c.includes("time") ||
+        c.includes("date") ||
+        c.includes("created") ||
+        c.includes("updated") ||
+        c.includes("dropped_on") ||        // DROPPED_ON
+        c.includes("initiated") ||      // INITIATED_TIME
+        c.includes("_on") ||
+        c.endsWith("_at")
+      );
+    }
+
+    function isStatusLikeColumn(colName) {
+      const c = (colName || "").toLowerCase();
+      return c.includes("status");
+    }
+
+    function buildHeaderAndFilters(theadEl, cols, tableKey) {
+      const header = document.createElement("tr");
+      cols.forEach(c => {
+        const th = document.createElement("th");
+        th.textContent = c;
+        header.appendChild(th);
+      });
+
+      const filters = document.createElement("tr");
+      filters.className = "filters-row-ui";
+
+      cols.forEach((c, idx) => {
+        const th = document.createElement("th");
+
+        if (isDateLikeColumn(c)) {
+          th.innerHTML = `
+            <div class="date-filter">
+              <select class="date-preset" data-table="${tableKey}" data-col="${idx}">
+                <option value="all">All</option>
+                <option value="24h">Last 24 hr</option>
+                <option value="7d">Last 7 days</option>
+                <option value="week">This week</option>
+                <option value="month">This month</option>
+                <option value="custom">Custom</option>
+              </select>
+ 
+              <div class="date-pop d-none">
+                <div style="font-weight:700;margin-bottom:8px;">Start Time Range</div>
+ 
+                <div style="display:grid;gap:8px;">
+                  <label style="font-size:12px;opacity:.8;">From</label>
+                  <input type="date" class="date-from" />
+                  <label style="font-size:12px;opacity:.8;">To</label>
+                  <input type="date" class="date-to" />
+                </div>
+ 
+                <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:10px;">
+                  <button type="button" class="date-apply btn-secondary" style="padding:6px 10px;">Apply</button>
+                  <button type="button" class="date-clear btn-secondary" style="padding:6px 10px;">Clear</button>
+                </div>
+              </div>
+            </div>
+          `;
+          filters.appendChild(th);
+          return;
+        }
+
+        if (isStatusLikeColumn(c)) {
+          th.innerHTML = `
+            <select class="status-filter" data-table="${tableKey}" data-col="${idx}">
+              <option value="">All</option>
+            </select>
+          `;
+          filters.appendChild(th);
+          return;
+        }
+
+        th.innerHTML = `<input class="col-filter-input" data-table="${tableKey}" data-col="${idx}" placeholder="All" />`;
+        filters.appendChild(th);
+      });
+
+      theadEl.innerHTML = "";
+      theadEl.appendChild(header);
+      theadEl.appendChild(filters);
+    }
+
+    function parseDateSafe(v) {
+      if (!v) return null;
+      const s = String(v).trim();
+      const isoish = s.includes("T") ? s : s.replace(" ", "T");
+      const d = new Date(isoish);
+      return isNaN(d.getTime()) ? null : d;
+    }
+
+    function startOfWeek(d) {
+      const x = new Date(d);
+      const day = x.getDay();
+      const diff = (day === 0 ? -6 : 1 - day);
+      x.setDate(x.getDate() + diff);
+      x.setHours(0, 0, 0, 0);
+      return x;
+    }
+
+    function startOfMonth(d) {
+      const x = new Date(d);
+      x.setDate(1);
+      x.setHours(0, 0, 0, 0);
+      return x;
+    }
+
+    function presetRange(preset) {
+      const now = new Date();
+      const to = new Date(now);
+      if (preset === "all") return { from: null, to: null };
+      if (preset === "24h") return { from: new Date(now.getTime() - 24 * 60 * 60 * 1000), to };
+      if (preset === "7d") return { from: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000), to };
+      if (preset === "week") return { from: startOfWeek(now), to };
+      if (preset === "month") return { from: startOfMonth(now), to };
+      return { from: null, to: null };
+    }
+
+    function fillStatusDropdown(tableEl) {
+      const tbody = tableEl.querySelector("tbody");
+      const filters = tableEl.querySelectorAll(".status-filter");
+      if (!filters.length) return;
+
+      filters.forEach(sel => {
+        const colIdx = parseInt(sel.dataset.col, 10);
+        const values = new Set();
+
+        Array.from(tbody.querySelectorAll("tr")).forEach(tr => {
+          const td = tr.querySelectorAll("td")[colIdx];
+          const v = (td?.innerText || "").trim();
+          if (v) values.add(v);
+        });
+
+        const current = sel.value;
+        sel.innerHTML = `<option value="">All</option>` +
+          Array.from(values).sort().map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+        sel.value = current;
+      });
+    }
+
+    function attachFilters(tableEl) {
+      if (!tableEl || tableEl.dataset.filtersBound === "1") return;
+      tableEl.dataset.filtersBound = "1";
+
+      const tbody = tableEl.querySelector("tbody");
+
+      // one global popup reused
+      let globalDatePop = null;
+      function ensureDatePop() {
+        if (globalDatePop) return globalDatePop;
+
+        const div = document.createElement("div");
+        div.className = "date-pop d-none";
+        div.innerHTML = `
+      <div style="font-weight:700;margin-bottom:8px;">Start Time Range</div>
+      <div style="display:grid;gap:8px;">
+        <label style="font-size:12px;opacity:.8;">From</label>
+        <input type="date" class="date-from" />
+        <label style="font-size:12px;opacity:.8;">To</label>
+        <input type="date" class="date-to" />
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:10px;">
+        <button type="button" class="date-apply btn-secondary" style="padding:6px 10px;">Apply</button>
+        <button type="button" class="date-clear btn-secondary" style="padding:6px 10px;">Clear</button>
+      </div>
+    `;
+        document.body.appendChild(div);
+        globalDatePop = div;
+
+        // close on outside click
+        document.addEventListener("click", (e) => {
+          if (!globalDatePop.classList.contains("d-none")) {
+            const inside = globalDatePop.contains(e.target);
+            const isPreset = e.target.classList && e.target.classList.contains("date-preset");
+            if (!inside && !isPreset) globalDatePop.classList.add("d-none");
+          }
+        });
+
+        return globalDatePop;
+      }
+
+      function rowMatches(tr) {
+        const tds = Array.from(tr.querySelectorAll("td"));
+
+        // text filters
+        for (const inp of tableEl.querySelectorAll(".col-filter-input")) {
+          const colIdx = parseInt(inp.dataset.col, 10);
+          const needle = (inp.value || "").trim().toLowerCase();
+          if (!needle) continue;
+          const cell = (tds[colIdx]?.innerText || "").toLowerCase();
+          if (!cell.includes(needle)) return false;
+        }
+
+        // status dropdown
+        for (const sel of tableEl.querySelectorAll(".status-filter")) {
+          const colIdx = parseInt(sel.dataset.col, 10);
+          const pick = (sel.value || "").trim();
+          if (!pick) continue;
+          const cell = (tds[colIdx]?.innerText || "").trim();
+          if (cell !== pick) return false;
+        }
+
+        // date preset/custom
+        for (const sel of tableEl.querySelectorAll(".date-preset")) {
+          const colIdx = parseInt(sel.dataset.col, 10);
+          const mode = sel.value;
+          if (mode === "all") continue;
+
+          const cellVal = (tds[colIdx]?.innerText || "").trim();
+          const cellDate = parseDateSafe(cellVal);
+          if (!cellDate) return false;
+
+          if (mode === "custom") {
+            const from = sel._from || null;
+            const to = sel._to || null;
+            if (from && cellDate < from) return false;
+            if (to && cellDate > to) return false;
+          } else {
+            const { from, to } = presetRange(mode);
+            if (from && cellDate < from) return false;
+            if (to && cellDate > to) return false;
+          }
+        }
+
+        return true;
+      }
+
+      function apply() {
+        Array.from(tbody.querySelectorAll("tr")).forEach(r => {
+          r.style.display = rowMatches(r) ? "" : "none";
+        });
+      }
+
+      tableEl.addEventListener("input", (e) => {
+        if (e.target.classList.contains("col-filter-input")) apply();
+      });
+
+      tableEl.addEventListener("change", (e) => {
+        if (e.target.classList.contains("status-filter")) apply();
+
+        if (e.target.classList.contains("date-preset")) {
+          const sel = e.target;
+
+          if (sel.value !== "custom") {
+            // close popup if open
+            const pop = ensureDatePop();
+            pop.classList.add("d-none");
+            apply();
+            return;
+          }
+
+          // OPEN floating popup near the dropdown
+          const pop = ensureDatePop();
+          const rect = sel.getBoundingClientRect();
+          pop.style.top = `${rect.bottom + 8}px`;
+          pop.style.left = `${Math.min(rect.left, window.innerWidth - 290)}px`;
+
+          // load stored values for this select
+          pop.querySelector(".date-from").value = sel._fromISO || "";
+          pop.querySelector(".date-to").value = sel._toISO || "";
+
+          pop.classList.remove("d-none");
+
+          // bind buttons once per open
+          const applyBtn = pop.querySelector(".date-apply");
+          const clearBtn = pop.querySelector(".date-clear");
+
+          applyBtn.onclick = () => {
+            const fromVal = pop.querySelector(".date-from").value;
+            const toVal = pop.querySelector(".date-to").value;
+
+            sel._fromISO = fromVal || "";
+            sel._toISO = toVal || "";
+
+            sel._from = fromVal ? new Date(fromVal + "T00:00:00") : null;
+            sel._to = toVal ? new Date(toVal + "T23:59:59") : null;
+
+            pop.classList.add("d-none");
+            apply();
+          };
+
+          clearBtn.onclick = () => {
+            pop.querySelector(".date-from").value = "";
+            pop.querySelector(".date-to").value = "";
+            sel._fromISO = "";
+            sel._toISO = "";
+            sel._from = null;
+            sel._to = null;
+
+            sel.value = "all";
+            pop.classList.add("d-none");
+            apply();
+          };
+        }
+      });
+
+      apply();
+    }
+
+
+    function renderTable(tableEl, cols, rows, tableKey) {
+      const thead = tableEl.querySelector("thead");
+      const tbody = tableEl.querySelector("tbody");
+
+      cols = cols || [];
+      rows = rows || [];
+
+      // ✅ remove ERROR_MESSAGE only from reinit_log
+      if (tableKey === "reinit") {
+        const dropIdx = cols.findIndex(c => String(c).toLowerCase() === "error_message");
+        if (dropIdx !== -1) {
+          cols = cols.filter((_, i) => i !== dropIdx);
+          rows = rows.map(r => (r || []).filter((_, i) => i !== dropIdx));
+        }
+      }
+
+      buildHeaderAndFilters(thead, cols, tableKey);
+
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="${Math.max(1, cols.length)}" class="text-center text-gray">No rows</td></tr>`;
+      } else {
+        tbody.innerHTML = rows.map(rw => {
+          const cells = (rw || []).map((v, i) => {
+            const cname = cols[i] ? String(cols[i]).toUpperCase() : "";
+            return `<td data-colname="${esc(cname)}">${esc(v)}</td>`;
+          }).join("");
+          return `<tr>${cells}</tr>`;
+        }).join("");
+      }
+
+      attachFilters(tableEl);
+      fillStatusDropdown(tableEl);
+    }
+
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const form = document.getElementById("script1-form");
+      const progressWrap = document.getElementById("run-progress");
+      const progressText = document.getElementById("run-progress-text");
+      const bar = document.getElementById("run-progress-bar");
+      const btn = document.getElementById("run-btn");
+      const consoleBox = document.getElementById("exec-console");
+
+      const resultPanel = document.getElementById("result-panel");
+      const validationBlock = document.getElementById("validation-block");
+      const tableCountBlock = document.getElementById("tablecount-block");
+      const agentStatusBlock = document.getElementById("agentstatus-block");
+      const finalStatusBlock = document.getElementById("finalstatus-block");
+
+      function showPanel() { resultPanel.classList.remove("d-none"); }
+
+      function renderTableCount(tableCount) {
+        if (tableCount === null || tableCount === undefined) return;
+        tableCountBlock.innerHTML = `
+          <div class="alert alert-info">
+            <div class="alert-icon">🧮</div>
+            <div class="alert-content">
+              <div class="alert-title">Replication scope</div>
+              <div class="text-gray">Tables in your list file: <b>${esc(tableCount)}</b></div>
+            </div>
+          </div>`;
+      }
+
+      function renderValidationError(msg) {
+        if (!msg) return;
+        validationBlock.innerHTML = `
+          <div class="alert alert-error">
+            <div class="alert-icon">⛔</div>
+            <div class="alert-content">
+              <div class="alert-title">Pre-check failed</div>
+              <pre class="code-block">${esc(msg)}</pre>
+            </div>
+          </div>`;
+      }
+
+      function renderAgentStatus(agentStatus) {
+        if (!agentStatus || !agentStatus.length) return;
+
+        const rows = agentStatus.map(r => {
+          const status =
+            (r.last_run_status === 1) ? "Succeeded" :
+              (r.last_run_status === 0) ? "Failed" :
+                (r.last_run_status === 2) ? "Retry" :
+                  (r.last_run_status === 3) ? "Canceled" :
+                    (r.last_run_status === 4) ? "In progress" : "Unknown";
+
+          return `
+            <tr>
+              <td>${esc(r.agent_type)}</td>
+              <td>${esc(r.job_name)}</td>
+              <td>${r.is_running ? "Yes" : "No"}</td>
+              <td>${esc(status)}</td>
+              <td>${esc(r.last_run_at || "NA")}</td>
+            </tr>`;
+        }).join("");
+
+        agentStatusBlock.innerHTML = `
+          <div class="alert alert-info">
+            <div class="alert-icon">🛰️</div>
+            <div class="alert-content">
+              <div class="alert-title">Agent job status (Distributor)</div>
+              <div class="table-wrap mt-2">
+                <table class="table table-compact">
+                  <thead>
+                    <tr>
+                      <th>Type</th>
+                      <th>Job</th>
+                      <th>Running</th>
+                      <th>Last outcome</th>
+                      <th>Last run</th>
+                    </tr>
+                  </thead>
+                  <tbody>${rows}</tbody>
+                </table>
+              </div>
+              <div class="text-gray mt-2">This is a health snapshot. If agents are failing, fix that before dropping/reinitializing.</div>
+            </div>
+          </div>`;
+      }
+
+      function renderFinal(ok, exitCode, stderr) {
+        if (ok) {
+          finalStatusBlock.innerHTML = `
+            <div class="alert alert-success">
+              <div class="alert-icon">✅</div>
+              <div class="alert-content">
+                <div class="alert-title">Completed</div>
+                <div class="text-gray">Script finished successfully.</div>
+              </div>
+            </div>`;
+        } else {
+          finalStatusBlock.innerHTML = `
+            <div class="alert alert-error">
+              <div class="alert-icon">❌</div>
+              <div class="alert-content">
+                <div class="alert-title">Failed</div>
+                <div class="text-gray">ExitCode: <b>${esc(exitCode)}</b></div>
+                <pre class="code-block">${esc(stderr || "")}</pre>
+              </div>
+            </div>`;
+        }
+      }
+
+      function setPct(pct, elapsedSec) {
+        pct = Math.max(0, Math.min(100, parseInt(pct || 0, 10)));
+        bar.style.width = `${pct}%`;
+        progressText.textContent = `Running… ${pct}% · ${fmtTime(elapsedSec)}`;
+      }
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        consoleBox.value = "";
+        validationBlock.innerHTML = "";
+        tableCountBlock.innerHTML = "";
+        agentStatusBlock.innerHTML = "";
+        finalStatusBlock.innerHTML = "";
+        resultPanel.classList.add("d-none");
+
+        progressWrap.classList.remove("d-none");
+        btn.disabled = true;
+        btn.textContent = "Running…";
+        setPct(0, 0);
+
+        const fd = new FormData(form);
+        const resp = await fetch("{{url_for('replication.run_script1_stream')}}", { method: "POST", body: fd });
+        if (!resp.ok || !resp.body) {
+          btn.disabled = false;
+          btn.textContent = "Run Replication Drop";
+          progressText.textContent = "Failed to start streaming.";
+          return;
+        }
+
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let buffer = "";
+
+        function handleSseChunk(chunk) {
+          buffer += chunk;
+          let idx;
+          while ((idx = buffer.indexOf("\n\n")) !== -1) {
+            const raw = buffer.slice(0, idx).trim();
+            buffer = buffer.slice(idx + 2);
+
+            let eventName = "message";
+            let dataLine = "";
+            for (const line of raw.split("\n")) {
+              if (line.startsWith("event:")) eventName = line.slice(6).trim();
+              if (line.startsWith("data:")) dataLine += line.slice(5).trim();
+            }
+
+            let data = {};
+            try { data = dataLine ? JSON.parse(dataLine) : {}; } catch { }
+
+            if (eventName === "meta") {
+              showPanel();
+              renderValidationError(data.validation_error);
+              renderTableCount(data.table_count);
+              renderAgentStatus(data.agent_status);
+            }
+
+            if (eventName === "line") {
+              if (data.line) {
+                consoleBox.value += data.line + "\n";
+                consoleBox.scrollTop = consoleBox.scrollHeight;
+              }
+              setPct(data.pct, data.elapsed_sec);
+            }
+
+            if (eventName === "error") {
+              showPanel();
+              consoleBox.value += "\n[ERROR]\n" + (data.message || "Unknown error") + "\n";
+              consoleBox.scrollTop = consoleBox.scrollHeight;
+            }
+
+            if (eventName === "done") {
+              showPanel();
+              setPct(100, data.elapsed_sec);
+              renderFinal(data.ok, data.exit_code, data.stderr);
+
+              btn.disabled = false;
+              btn.textContent = "Run Replication Drop";
+              loadRecentFromReplLog();
+            }
+          }
+        }
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          handleSseChunk(decoder.decode(value, { stream: true }));
+        }
+      });
+
+      const refreshBtn = document.getElementById("recent-refresh-btn");
+      if (refreshBtn) refreshBtn.addEventListener("click", loadRecentFromReplLog);
+
+      // ---- Logs popup (center + filters) ----
+      async function openLogsModal() {
+        const overlay = document.getElementById('logs-modal');
+        if (!overlay) return;
+        overlay.style.display = 'flex';  // ✅ important for centering
+
+        document.getElementById('logs-db-label').textContent = 'Loading…';
+
+        const replTableEl = document.getElementById('logs-repl-table');
+        const reinitTableEl = document.getElementById('logs-reinit-table');
+
+        replTableEl.querySelector("thead").innerHTML = "";
+        replTableEl.querySelector("tbody").innerHTML = `<tr><td class="text-center text-gray">Loading…</td></tr>`;
+        reinitTableEl.querySelector("thead").innerHTML = "";
+        reinitTableEl.querySelector("tbody").innerHTML = `<tr><td class="text-center text-gray">Loading…</td></tr>`;
+
+        try {
+          const li = document.getElementById("LogInstance")?.value?.trim() || "";
+          const ld = document.getElementById("LogDatabase")?.value?.trim() || "";
+          const replTable = document.getElementById("LogTable")?.value?.trim() || "";
+          const qp = (!li || !ld)
+            ? ``
+            : `?log_instance=${encodeURIComponent(li)}&log_database=${encodeURIComponent(ld)}${replTable ? `&repl_table=${encodeURIComponent(replTable)}` : ``}`;
+
+          const logsBase = "{{ url_for('replication.api_logs_data') }}";
+
+          const r = `${logsBase}?${qp}`;
+
+
+          const data = await r.json();
+
+          document.getElementById('logs-db-label').textContent = `${data.log_instance || 'NA'} / ${data.log_database || 'NA'}`;
+
+          const repl = data.repl_log || { cols: [], rows: [] };
+          const reinit = data.reinit_log || { cols: [], rows: [] };
+
+          renderTable(replTableEl, repl.cols, repl.rows, "repl");
+          renderTable(reinitTableEl, reinit.cols, reinit.rows, "reinit");
+        } catch {
+          document.getElementById('logs-db-label').textContent = 'Failed to load logs.';
+          replTableEl.querySelector("tbody").innerHTML = `<tr><td class="text-center text-gray">Failed to load</td></tr>`;
+          reinitTableEl.querySelector("tbody").innerHTML = `<tr><td class="text-center text-gray">Failed to load</td></tr>`;
+        }
+      }
+
+      function closeLogsModal() {
+        const overlay = document.getElementById('logs-modal');
+        if (overlay) overlay.style.display = 'none';
+      }
+
+      document.getElementById('open-logs')?.addEventListener('click', (e) => { e.preventDefault(); openLogsModal(); });
+      document.getElementById('logs-close')?.addEventListener('click', closeLogsModal);
+      document.getElementById('logs-modal')?.addEventListener('click', (e) => { if (e.target && e.target.id === 'logs-modal') closeLogsModal(); });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLogsModal(); });
+
+      // Restore last used log config (no extra UI)
+      try {
+        const li0 = localStorage.getItem("dsx_log_instance") || "";
+        const ld0 = localStorage.getItem("dsx_log_database") || "";
+        const lt0 = localStorage.getItem("dsx_repl_log_table") || "";
+        if (li0 && !document.getElementById("LogInstance")?.value) document.getElementById("LogInstance").value = li0;
+        if (ld0 && !document.getElementById("LogDatabase")?.value) document.getElementById("LogDatabase").value = ld0;
+        if (lt0 && !document.getElementById("LogTable")?.value) document.getElementById("LogTable").value = lt0;
+      } catch { }
+
+      ["LogInstance", "LogDatabase", "LogTable"].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("blur", () => {
+          try {
+            if (id === "LogInstance") localStorage.setItem("dsx_log_instance", el.value.trim());
+            if (id === "LogDatabase") localStorage.setItem("dsx_log_database", el.value.trim());
+            if (id === "LogTable") localStorage.setItem("dsx_repl_log_table", el.value.trim());
+          } catch { }
+        });
+      });
+
+      loadRecentFromReplLog();
+    });
+  </script>
+
+  <!-- Logs Modal (popup) -->
+  <div id="logs-modal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">Execution Logs</div>
+          <div class="text-gray" id="logs-db-label" style="margin-top:4px;font-size:0.95rem;"></div>
+        </div>
+        <button id="logs-close" class="btn-secondary" style="padding:8px 12px;border-radius:10px;">Close</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="card-simple" style="padding:14px;">
+          <div class="font-weight-bold">repl_log</div>
+          <div class="table-wrap mt-2">
+            <div class="logs-table-scroll">
+              <table id="logs-repl-table" class="table table-compact">
+                <thead></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="card-simple mt-4" style="padding:14px;">
+          <div class="font-weight-bold">reinit_log</div>
+          <div class="table-wrap mt-2">
+            <div class="logs-table-scroll">
+              <table id="logs-reinit-table" class="table table-compact">
+                <thead></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</body>
+
+</html>

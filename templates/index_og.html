@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Database HealthCheck Hub</title>
+    <style>
+      /* Modern CSS Reset */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        /* Modern Color Palette */
+        --primary: #4f46e5;
+        --primary-light: #818cf8;
+        --primary-dark: #3730a3;
+        --secondary: #06b6d4;
+        --secondary-light: #67e8f9;
+        --secondary-dark: #0e7490;
+        --accent: #f97316;
+        --accent-light: #fdba74;
+        --dark: #0f172a;
+        --dark-soft: #1e293b;
+        --gray: #64748b;
+        --gray-light: #94a3b8;
+        --light: #f8fafc;
+        --light-soft: #f1f5f9;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+
+        /* Spacing System */
+        --space-xs: 0.25rem;
+        --space-sm: 0.5rem;
+        --space-md: 1rem;
+        --space-lg: 1.5rem;
+        --space-xl: 2rem;
+        --space-2xl: 3rem;
+        --space-3xl: 5rem;
+
+        /* Typography */
+        --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        --font-mono: "JetBrains Mono", "SF Mono", SFMono-Regular, ui-monospace,
+          monospace;
+      }
+
+      body {
+        font-family: var(--font-sans);
+        background-color: var(--light);
+        color: var(--dark);
+        line-height: 1.6;
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+
+      /* Modern Glassmorphism Background */
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background: radial-gradient(
+            circle at 15% 85%,
+            rgba(79, 70, 229, 0.15) 0%,
+            transparent 40%
+          ),
+          radial-gradient(
+            circle at 85% 15%,
+            rgba(6, 182, 212, 0.1) 0%,
+            transparent 45%
+          ),
+          radial-gradient(
+            circle at 50% 50%,
+            rgba(249, 115, 22, 0.05) 0%,
+            transparent 60%
+          );
+        z-index: -1;
+        pointer-events: none;
+      }
+
+      /* Modern Header */
+      header {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-bottom: 1px solid rgba(241, 245, 249, 0.6);
+        padding: var(--space-xl) var(--space-2xl);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        box-shadow: 0 4px 30px rgba(0, 0, 0, 0.04);
+      }
+
+      .header-content h1 {
+        font-size: 2rem;
+        font-weight: 800;
+        background: linear-gradient(
+          135deg,
+          var(--dark) 0%,
+          var(--primary) 100%
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: var(--space-xs);
+        letter-spacing: -0.025em;
+      }
+
+      .sub-header {
+        font-size: 0.9rem;
+        color: var(--gray);
+        font-weight: 500;
+        letter-spacing: -0.01em;
+      }
+
+      .logo img {
+        height: 80px;
+        width: 130px;
+        background: rgba(255, 255, 255, 0.7);
+        border-radius: 12px;
+        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06),
+          0 0 0 1px rgba(241, 245, 249, 0.8);
+        transition: all 0.3s cubic-bezier(0.2, 0, 0, 1);
+      }
+
+      .logo img:hover {
+        transform: translateY(-2px) scale(1.02);
+        box-shadow: 0 8px 25px rgba(249, 115, 22, 0.15),
+          0 0 0 1px rgba(249, 115, 22, 0.3);
+      }
+
+      /* Container */
+      main {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: var(--space-3xl) var(--space-xl);
+      }
+
+      /* Page Header Section */
+      .page-header {
+        text-align: center;
+        margin-bottom: var(--space-3xl);
+      }
+
+      .page-header h2 {
+        font-size: 2.25rem;
+        font-weight: 800;
+        background: linear-gradient(
+          135deg,
+          var(--dark) 0%,
+          var(--primary) 100%
+        );
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: var(--space-md);
+        letter-spacing: -0.03em;
+        line-height: 1.2;
+      }
+
+      .page-header p {
+        font-size: 1.125rem;
+        color: var(--gray);
+        max-width: 36rem;
+        margin: 0 auto;
+        line-height: 1.7;
+      }
+
+      /* Modules Section */
+      .platforms-section {
+        margin-bottom: var(--space-3xl);
+      }
+
+      /* Modern Section Labels */
+      .section-label {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--primary);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-bottom: var(--space-xl);
+        text-align: center;
+        position: relative;
+        display: inline-block;
+        padding: var(--space-xs) var(--space-md);
+        border-radius: 20px;
+        background: linear-gradient(
+          to right,
+          rgba(79, 70, 229, 0.1),
+          rgba(6, 182, 212, 0.1)
+        );
+        left: 50%;
+        transform: translateX(-50%);
+      }
+
+      /* Modern Card Grid */
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: var(--space-xl);
+        margin-bottom: var(--space-xl);
+      }
+
+      /* Modern Card Design with Glassmorphism */
+      .card {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(241, 245, 249, 0.6);
+        border-radius: 16px;
+        padding: var(--space-xl);
+        text-align: center;
+        transition: all 0.4s cubic-bezier(0.2, 0, 0, 1);
+        cursor: pointer;
+        text-decoration: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 180px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(15, 23, 42, 0.03),
+          0 0 0 1px rgba(241, 245, 249, 0.8);
+      }
+
+      .card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          135deg,
+          rgba(79, 70, 229, 0.05) 0%,
+          rgba(6, 182, 212, 0.05) 100%
+        );
+        opacity: 0;
+        transition: opacity 0.4s ease;
+        z-index: 0;
+      }
+
+      .card::after {
+        content: "";
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(
+          circle at center,
+          rgba(255, 255, 255, 0.8) 0%,
+          transparent 50%
+        );
+        opacity: 0;
+        transform: scale(0.5);
+        transition: transform 0.6s ease, opacity 0.6s ease;
+        pointer-events: none;
+        z-index: 1;
+      }
+
+      .card:hover::before {
+        opacity: 1;
+      }
+
+      .card:hover::after {
+        opacity: 0.4;
+        transform: scale(1);
+      }
+
+      .card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 20px 40px rgba(79, 70, 229, 0.12),
+          0 0 0 1px rgba(79, 70, 229, 0.2);
+      }
+
+      /* Card Icon */
+      .card-icon {
+        width: 64px;
+        height: 64px;
+        margin-bottom: var(--space-lg);
+        transition: all 0.4s cubic-bezier(0.2, 0, 0, 1);
+        position: relative;
+        z-index: 2;
+        filter: drop-shadow(0 4px 6px rgba(15, 23, 42, 0.1));
+      }
+
+      .card:hover .card-icon {
+        transform: scale(1.15) translateY(-4px);
+        filter: drop-shadow(0 8px 12px rgba(79, 70, 229, 0.2));
+      }
+
+      /* Card Title */
+      .card-title {
+        font-size: 1.125rem;
+        font-weight: 600;
+        color: var(--dark);
+        transition: color 0.3s ease;
+        position: relative;
+        z-index: 2;
+      }
+
+      .card:hover .card-title {
+        color: var(--primary);
+      }
+
+      /* Modern Status Indicator */
+      .status-indicator {
+        position: absolute;
+        top: var(--space-md);
+        right: var(--space-md);
+        width: 10px;
+        height: 10px;
+        background: var(--success);
+        border-radius: 50%;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+        z-index: 3;
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2);
+        }
+        50% {
+          box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.1);
+        }
+      }
+
+      /* Modern Coming Soon Section */
+      .coming-soon-section {
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(241, 245, 249, 0.6);
+        border-radius: 24px;
+        padding: var(--space-2xl);
+        box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08),
+          0 0 0 1px rgba(241, 245, 249, 0.8);
+      }
+
+      .coming-soon-section .section-label {
+        text-align: left;
+        margin-bottom: var(--space-xl);
+        color: var(--primary);
+        background: linear-gradient(
+          to right,
+          rgba(79, 70, 229, 0.1),
+          rgba(139, 92, 246, 0.1)
+        );
+        left: 0;
+        transform: none;
+      }
+
+      .coming-soon-section h3 {
+        font-size: 1.75rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, var(--dark) 0%, var(--primary) 80%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: var(--space-sm);
+        letter-spacing: -0.02em;
+      }
+
+      .coming-soon-section p {
+        font-size: 1rem;
+        color: var(--gray);
+        margin-bottom: var(--space-xl);
+        line-height: 1.6;
+        max-width: 42rem;
+      }
+
+      /* Coming Soon Grid */
+      .coming-soon-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: var(--space-lg);
+      }
+
+      /* Modern Coming Soon Cards */
+      .coming-soon-card {
+        background: rgba(255, 255, 255, 0.5);
+        border: 1px solid rgba(241, 245, 249, 0.8);
+        border-radius: 16px;
+        padding: var(--space-xl) var(--space-lg);
+        text-align: center;
+        transition: all 0.4s cubic-bezier(0.2, 0, 0, 1);
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 4px 16px rgba(15, 23, 42, 0.03);
+      }
+
+      .coming-soon-card::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          135deg,
+          rgba(79, 70, 229, 0.05) 0%,
+          rgba(236, 72, 153, 0.05) 100%
+        );
+        opacity: 0;
+        transition: opacity 0.4s ease;
+      }
+
+      .coming-soon-card:hover::before {
+        opacity: 1;
+      }
+
+      .coming-soon-card:hover {
+        transform: translateY(-5px) scale(1.02);
+        box-shadow: 0 20px 30px rgba(79, 70, 229, 0.1),
+          0 0 0 1px rgba(79, 70, 229, 0.2);
+      }
+
+      .coming-soon-card img {
+        width: 48px;
+        height: 48px;
+        margin-bottom: var(--space-md);
+        opacity: 0.85;
+        transition: all 0.4s cubic-bezier(0.2, 0, 0, 1);
+        position: relative;
+        z-index: 2;
+        filter: drop-shadow(0 4px 6px rgba(15, 23, 42, 0.1));
+      }
+
+      .coming-soon-card:hover img {
+        opacity: 1;
+        transform: scale(1.1) translateY(-2px);
+        filter: drop-shadow(0 8px 12px rgba(79, 70, 229, 0.2));
+      }
+
+      .coming-soon-card span {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--gray);
+        display: block;
+        transition: color 0.3s ease;
+        position: relative;
+        z-index: 2;
+      }
+
+      .coming-soon-card:hover span {
+        color: var(--primary);
+      }
+
+      /* Modern Badge */
+      .coming-soon-badge {
+        position: absolute;
+        top: -6px;
+        right: -6px;
+        background: linear-gradient(
+          135deg,
+          var(--accent) 0%,
+          var(--warning) 100%
+        );
+        color: white;
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: var(--space-xs) var(--space-sm);
+        border-radius: 20px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+        z-index: 3;
+      }
+
+      /* Card Color Variations */
+      .card:nth-child(1):hover {
+        border-color: var(--danger);
+        box-shadow: 0 20px 40px rgba(239, 68, 68, 0.12),
+          0 0 0 1px rgba(239, 68, 68, 0.2);
+      }
+      .card:nth-child(1):hover .card-title {
+        color: var(--danger);
+      }
+      .card:nth-child(1):hover .card-icon {
+        filter: drop-shadow(0 8px 12px rgba(239, 68, 68, 0.2));
+      }
+      .card:nth-child(1):hover::before {
+        background: linear-gradient(
+          135deg,
+          rgba(239, 68, 68, 0.05) 0%,
+          rgba(248, 113, 113, 0.05) 100%
+        );
+      }
+
+      .card:nth-child(2):hover {
+        border-color: var(--accent);
+        box-shadow: 0 20px 40px rgba(249, 115, 22, 0.12),
+          0 0 0 1px rgba(249, 115, 22, 0.2);
+      }
+      .card:nth-child(2):hover .card-title {
+        color: var(--accent);
+      }
+      .card:nth-child(2):hover .card-icon {
+        filter: drop-shadow(0 8px 12px rgba(249, 115, 22, 0.2));
+      }
+      .card:nth-child(2):hover::before {
+        background: linear-gradient(
+          135deg,
+          rgba(249, 115, 22, 0.05) 0%,
+          rgba(251, 146, 60, 0.05) 100%
+        );
+      }
+
+      /* Responsive Design with Modern Breakpoints */
+      @media (max-width: 1024px) {
+        :root {
+          --space-3xl: 4rem;
+        }
+
+        .grid {
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        }
+      }
+
+      @media (max-width: 768px) {
+        :root {
+          --space-3xl: 3rem;
+          --space-2xl: 2rem;
+        }
+
+        header {
+          flex-direction: column;
+          gap: var(--space-lg);
+          padding: var(--space-lg) var(--space-lg);
+          text-align: center;
+        }
+
+        .header-content h1 {
+          font-size: 1.75rem;
+        }
+
+        main {
+          padding: var(--space-2xl) var(--space-lg);
+        }
+
+        .page-header h2 {
+          font-size: 1.75rem;
+        }
+
+        .grid {
+          grid-template-columns: 1fr;
+          gap: var(--space-lg);
+        }
+
+        .coming-soon-grid {
+          grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        }
+
+        .coming-soon-section {
+          padding: var(--space-xl) var(--space-lg);
+        }
+
+        .coming-soon-section .section-label {
+          text-align: center;
+          left: 50%;
+          transform: translateX(-50%);
+        }
+      }
+
+      @media (max-width: 480px) {
+        :root {
+          --space-2xl: 1.5rem;
+          --space-xl: 1.25rem;
+        }
+
+        .card {
+          min-height: 160px;
+          padding: var(--space-lg);
+        }
+
+        .card-icon {
+          width: 48px;
+          height: 48px;
+        }
+
+        .page-header h2 {
+          font-size: 1.5rem;
+        }
+
+        .page-header p {
+          font-size: 1rem;
+        }
+
+        .coming-soon-section h3 {
+          font-size: 1.5rem;
+        }
+      }
+
+      /* Accessibility Improvements */
+      .card:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.5),
+          0 20px 40px rgba(79, 70, 229, 0.12);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: none !important;
+          transition: none !important;
+        }
+      }
+      
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="header-content">
+        <h1>DatasolveX</h1>
+        <div class="sub-header">
+          Enterprise Database Management Platform
+        </div>
+      </div>
+      <div class="logo">
+        <img
+          src="{{ url_for('static', filename='infy.jpg') }}"
+          alt="Infosys Logo"
+        />
+      </div>
+    </header>
+
+    <main>
+      <div class="page-header">
+        <h2>Database Solution Platform</h2>
+        <p>
+          Onestop solution for all the database Challenges —powered by DataSturdy, your trusted
+          advisor.
+        </p>
+      </div>
+
+      <div class="platforms-section">
+        <div class="section-label">Available Platforms</div>
+        <div class="grid">
+          <a href="{{ url_for('sqlserver_main') }}" class="card">
+            <div class="status-indicator"></div>
+            <img
+              src="{{ url_for('static', filename='microsoftsqlserver.svg') }}"
+              alt="SQL Server"
+              class="card-icon"
+            />
+            <div class="card-title">Microsoft SQL Server</div>
+          </a>
+          <a href="" class="card">
+            <div class="status-indicator"></div>
+            <img
+              src="{{ url_for('static', filename='mongodb.png') }}"
+              alt="MongoDB"
+              class="card-icon"
+            />
+            
+            <div class="card-title">MongoDB</div>
+          </a>
+
+          <a href="" class="card">
+            <div class="status-indicator"></div>
+            <img
+              src="{{ url_for('static', filename='mysql.png') }}"
+              alt="MySQL"
+              class="card-icon"
+            />
+            <div class="card-title">MySQL</div>
+          </a>
+
+          <a href="" class="card">
+            <div class="status-indicator"></div>
+            <img
+              src="{{ url_for('static', filename='postgresql.png') }}"
+              alt="PostgreSQL"
+              class="card-icon"
+            />
+            <div class="card-title">PostgreSQL</div>
+          </a>
+
+          <a href="" class="card">
+            <div class="status-indicator"></div>
+            <img
+              src="{{ url_for('static', filename='neo4j.png') }}"
+              alt="Oracle"
+              class="card-icon"
+            />
+
+            <div class="card-title">neo4j</div>
+          </a>
+        </div>
+      </div>
+
+      <div class="coming-soon-section">
+        <div class="section-label">Roadmap</div>
+        <h3>Upcoming Platform Support</h3>
+        <p>
+          We're expanding our platform coverage to include additional database
+          technologies. Expected
+          availability in Q3-Q4 2025.
+        </p>
+
+        <div class="coming-soon-grid">
+          <div class="coming-soon-card">
+            <div class="coming-soon-badge">Q3</div>
+            <img
+              src="{{ url_for('static', filename='amazondynamodb.png') }}"
+              alt="DynamoDB"
+            />
+            <span>Amazon DynamoDB</span>
+          </div>
+
+          <div class="coming-soon-card">
+            <div class="coming-soon-badge">Q3</div>
+            <img
+              src="{{ url_for('static', filename='mariadb.png') }}"
+              alt="MariaDB"
+            />
+            <span>MariaDB</span>
+          </div>
+
+          <div class="coming-soon-card">
+            <div class="coming-soon-badge">Q4</div>
+            <img
+              src="{{ url_for('static', filename='redis.png') }}"
+              alt="Redis"
+            />
+            <span>Redis</span>
+          </div>
+
+          <div class="coming-soon-card">
+            <div class="coming-soon-badge">Q4</div>
+            <img
+              src="{{ url_for('static', filename='apachecassandra.png') }}"
+              alt="Cassandra"
+            />
+            <span>Apache Cassandra</span>
+          </div>
+
+          <div class="coming-soon-card">
+            <div class="coming-soon-badge">Q4</div>
+            <img
+              src="{{ url_for('static', filename='couchbase.png') }}"
+              alt="Couchbase"
+            />
+            <span>Couchbase</span>
+          </div>
+        </div>
+      </div>
+    </main>
+  
+    <script>
+  window.addEventListener('beforeunload', function () {
+    const data = JSON.stringify({
+      page: window.location.pathname,
+      timestamp: new Date().toISOString()
+    });
+
+    // 👇 This is CRITICAL: content type must be application/json
+    const blob = new Blob([data], { type: 'application/json' });
+    navigator.sendBeacon('/log-exit', blob);
+  });
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const now = new Date().toISOString();
+    const page = window.location.pathname;
+
+    fetch('/log-entry', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            page: page,
+            timestamp: now
+        })
+    });
+});
+</script>
+
+  </body>
+</html>

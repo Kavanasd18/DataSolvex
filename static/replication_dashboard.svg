@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Dashboard frame -->
+  <g fill="none" stroke="#000" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="34" y="38" width="188" height="180" rx="22"></rect>
+    <path d="M34 78h188"></path>
+    <path d="M74 58h0"></path>
+    <path d="M98 58h0"></path>
+    <path d="M122 58h0"></path>
+  </g>
+
+  <!-- Replication nodes + arrows (inside dashboard) -->
+  <g fill="none" stroke="#000" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Nodes -->
+    <rect x="56" y="112" width="54" height="54" rx="14"></rect>
+    <rect x="146" y="112" width="54" height="54" rx="14"></rect>
+
+    <!-- Direction arrows -->
+    <path d="M110 132h36"></path>
+    <path d="M146 132l-14-14"></path>
+    <path d="M146 132l-14 14"></path>
+
+    <path d="M146 152h-36"></path>
+    <path d="M110 152l14-14"></path>
+    <path d="M110 152l14 14"></path>
+  </g>
+
+  <!-- KPI tiles at bottom -->
+  <g fill="#000">
+    <rect x="58" y="188" width="28" height="20" rx="6"></rect>
+    <rect x="94" y="188" width="28" height="20" rx="6"></rect>
+    <rect x="130" y="188" width="28" height="20" rx="6"></rect>
+    <rect x="166" y="188" width="28" height="20" rx="6"></rect>
+  </g>
+</svg>

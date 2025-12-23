@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>{{ server.name }} – Server Dashboard</title>
+
+  <!-- Bootstrap -->
+  <!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" /> -->
+  <!-- Your global CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}" />
+  <style>
+    .mini-charts-row {
+      margin-top: 0.75rem;
+    }
+
+    .mini-chart-card {
+      background: #f9fafb;
+      border-radius: 0.75rem;
+      padding: 0.6rem 0.75rem;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .mini-chart-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #4b5563;
+      margin-bottom: 0.25rem;
+    }
+
+    .mini-chart-body {
+      flex: 1;
+      position: relative;
+    }
+
+    .mini-chart-canvas {
+      width: 100%;
+      height: 120px !important;
+    }
+
+    body.inventory-body {
+      background: radial-gradient(circle at top, #e0f2fe 0, #eef2ff 28%, #f9fafb 100%);
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #0f172a;
+    }
+
+    .inventory-navbar {
+      background: #ffffff;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.3);
+      box-shadow: 0 4px 10px rgba(15, 23, 42, 0.06);
+    }
+
+    .page-title {
+      font-size: 1.3rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: #0f172a;
+      margin-top: 0px !important;
+    }
+
+    .page-subtitle {
+      font-size: 0.85rem;
+      color: #6b7280;
+    }
+
+    .status-badge {
+      border-radius: 999px;
+      padding: 0.25rem 0.7rem;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+
+    .status-online {
+      background: rgba(22, 163, 74, 0.08);
+      color: #166534;
+      border: 1px solid rgba(22, 163, 74, 0.25);
+    }
+
+    .status-offline {
+      background: rgba(220, 38, 38, 0.08);
+      color: #991b1b;
+      border: 1px solid rgba(220, 38, 38, 0.25);
+    }
+
+    /* KPI tiles */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 0.9rem;
+    }
+
+    .kpi-card {
+      border-radius: 0.9rem;
+      padding: 0.9rem 0.95rem;
+      background: #ffffff;
+      box-shadow: 0 6px 20px rgba(15, 23, 42, 0.05);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+    }
+
+    .kpi-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #9ca3af;
+      margin-bottom: 0.2rem;
+    }
+
+    .kpi-value {
+      font-weight: 600;
+      font-size: 1rem;
+      color: #0f172a;
+    }
+
+    .kpi-sub {
+      font-size: 0.75rem;
+      color: #9ca3af;
+      margin-top: 0.15rem;
+    }
+
+    .section-card {
+      border-radius: 1rem;
+      padding: 1rem 1.1rem;
+      background: #ffffff;
+      box-shadow: 0 12px 35px rgba(15, 23, 42, 0.06);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+    }
+
+    .section-title {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #6b7280;
+      margin-bottom: 0.6rem;
+    }
+
+    /* Info grid styling (Identity / Hardware / Config / DBs) */
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.65rem;
+    }
+
+    .info-item {
+      background: #f9fafb;
+      border-radius: 0.75rem;
+      padding: 0.55rem 0.8rem;
+      border: 1px solid rgba(209, 213, 219, 0.8);
+      box-shadow: 0 3px 8px rgba(15, 23, 42, 0.04);
+      display: flex;
+      flex-direction: column;
+      min-height: 64px;
+    }
+
+    .info-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #9ca3af;
+      margin-bottom: 0.15rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .info-value {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #111827;
+      word-break: break-all;
+    }
+
+    .info-value-subtle {
+      font-size: 0.8rem;
+      color: #6b7280;
+      margin-top: 0.1rem;
+    }
+
+    .metric-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      border-radius: 999px;
+      padding: 0.25rem 0.7rem;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-size: 0.75rem;
+      font-weight: 500;
+      margin: 0.1rem 0.2rem 0.1rem 0;
+      white-space: nowrap;
+    }
+
+    .metric-chip span.value {
+      font-weight: 600;
+    }
+
+    .disk-row {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      margin-bottom: 0.5rem;
+      font-size: 0.8rem;
+    }
+
+    .disk-row-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.6rem;
+      color: #4b5563;
+    }
+
+    .disk-row-header strong {
+      font-weight: 600;
+      color: #111827;
+    }
+
+    .progress {
+      height: 0.45rem;
+      border-radius: 999px;
+      background: #e5e7eb;
+      overflow: hidden;
+    }
+
+    .progress-bar-low {
+      background: linear-gradient(90deg, #22c55e, #16a34a);
+    }
+
+    .progress-bar-mid {
+      background: linear-gradient(90deg, #facc15, #f97316);
+    }
+
+    .progress-bar-high {
+      background: linear-gradient(90deg, #f97316, #dc2626);
+    }
+
+    .db-chip-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+    }
+
+    .db-chip {
+      border-radius: 0.75rem;
+      padding: 0.2rem 0.6rem;
+      background: #eef2ff;
+      color: #4338ca;
+      font-size: 0.75rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .top-db-list {
+      list-style: none;
+      padding-left: 0;
+      margin-bottom: 0;
+    }
+
+    .top-db-item {
+      padding: 0.35rem 0;
+      border-bottom: 1px dashed rgba(209, 213, 219, 0.7);
+      font-size: 0.85rem;
+    }
+
+    .top-db-item:last-child {
+      border-bottom: none;
+    }
+
+    .top-db-name {
+      font-weight: 500;
+      color: #111827;
+    }
+
+    .top-db-size {
+      color: #6b7280;
+      font-size: 0.78rem;
+    }
+
+    .db-selector-card {
+      border-radius: 1rem;
+      background: #f9fafb;
+      border: 1px dashed rgba(148, 163, 184, 0.9);
+    }
+
+    
+
+    /* Title */
+    .side-nav-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: #6b7280;
+      margin-bottom: 0.6rem;
+    }
+
+    /* Make the list behave like a neat vertical stack */
+    .side-nav .list-group {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      /* space between tiles */
+      margin: 0;
+      padding: 0.15rem;
+    }
+
+    /* Each pill */
+    .side-nav .list-group-item {
+      border: none;
+      width: 100%;
+      border-radius: 999px !important;
+      padding: 0.45rem 1rem;
+      font-size: 0.8rem;
+      cursor: pointer;
+      background: #f3f4f6;
+      color: #4b5563;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+    }
+
+    /* Active pill */
+    .side-nav .list-group-item.active {
+      background: #2563eb;
+      color: #ffffff;
+    }
+
+    @media (max-width: 991.98px) {
+      .side-nav {
+        position: static;
+        margin-bottom: 1rem;
+      }
+    }
+
+    .section-panel {
+      display: none;
+    }
+
+    .section-panel.active-panel {
+      display: block;
+    }
+
+    .container {
+      max-width: 1280px !important;
+      width: min(1280px 100%) !important;
+      margin: 0 auto;
+      padding: 22px 22px 48px;
+      margin-top: 110px;
+    }
+
+    /* 4 buttons in one line */
+    .side-nav {
+      padding: 0;
+      /* we’ll keep it simple */
+      background: transparent;
+      /* optional */
+      border: none;
+      /* optional */
+      box-shadow: none;
+      /* optional */
+    }
+
+    .side-nav-tabs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .side-tab {
+      height: 38px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: #ffffff;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #4b5563;
+      cursor: pointer;
+    }
+
+    .side-tab.active {
+      background: #2563eb;
+      color: #ffffff;
+      border-color: #2563eb;
+    }
+    .col-tab{
+    flex: 0 0 calc(100% - 24px);
+    max-width: calc(100% - 24px);
+    margin: 0 12px;
+    padding: 0 0 !important;
+    }
+
+    /* On small screens, allow wrap nicely */
+    @media (max-width: 640px) {
+      .side-nav-tabs {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+
+<body class="inventory-body">
+  {% set breadcrumb = [
+  {'label': 'SQL Server Main', 'href': '/sqlserver_main'},
+  {'label': 'Inventory Management', 'href': url_for('index')},
+  {'label': server.name, 'active': True}
+  ] %}
+  {% include "_dsx_inventory_header.html" %}
+
+  <main class="container py-4">
+    <!-- Header row -->
+    <div class="row g-3 mb-3">
+      <div class="col-12 col-lg-8">
+        <div class="section-card h-100">
+          <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3">
+            <div>
+              <h1 class="page-title mb-1">{{ server.name }}</h1>
+            </div>
+            <div class="text-md-end">
+              {% if server.status %}
+              <span class="badge status-badge
+                {% if server.status == 'ONLINE' %}status-online{% else %}status-offline{% endif %}">
+                {{ server.status }}
+              </span>
+              {% endif %}
+              <div class="mt-2 small text-muted">
+                Last scan: {{ server.last_scan|fmt_dt }}<br />
+                Last restart:
+                {% if server.last_restart %}
+                {{ server.last_restart|fmt_dt }}
+                {% else %}
+                N/A
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DB selector -->
+      <div class="col-12 col-lg-4">
+        <div class="db-selector-card p-3 h-100">
+          <h6 class="section-title mb-2">Databases</h6>
+          {% if databases %}
+          <label for="dbSelect" class="form-label small text-muted mb-1">
+            Select a database
+          </label>
+          <select id="dbSelect" class="form-select">
+            {% for db in databases %}
+            <option value="{{ db.name }}">
+              {{ db.name }} ({{ db.state }}, {{ db.recovery_model }})
+            </option>
+            {% endfor %}
+          </select>
+          <button class="btn btn-primary w-100 mt-3" id="viewDbBtn" type="button">
+            View database dashboard
+          </button>
+          {% else %}
+          <p class="small text-muted mb-0">
+            No user databases found on this instance.
+          </p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class=".col-tab kpi-grid mb-4">
+      <div class="kpi-card">
+        <div class="kpi-label">Total Databases</div>
+        <div class="kpi-value">
+          {{ metrics.db_summary.total_databases or 'N/A' }}
+        </div>
+        <div class="kpi-sub">
+          User: {{ metrics.db_summary.user_databases or '0' }}
+          • System: {{ metrics.db_summary.system_databases or '0' }}
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Total Size (User DBs)</div>
+        <div class="kpi-value">
+          {% if metrics.db_summary.total_size_gb %}
+          {{ "%.2f"|format(metrics.db_summary.total_size_gb) }} GB
+          {% else %}
+          N/A
+          {% endif %}
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">CPU / Memory</div>
+        <div class="kpi-value">
+          {{ metrics.hardware.logical_cpus or 'N/A' }} cores
+        </div>
+        <div class="kpi-sub">
+          RAM:
+          {% if metrics.hardware.total_memory_gb %}
+          {{ "%.1f"|format(metrics.hardware.total_memory_gb) }} GB
+          {% else %}
+          N/A
+          {% endif %}
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">SQL Memory / MAXDOP</div>
+        <div class="kpi-value">
+          {% if metrics.hardware.sql_memory_gb %}
+          {{ "%.1f"|format(metrics.hardware.sql_memory_gb) }} GB
+          {% else %}
+          N/A
+          {% endif %}
+        </div>
+        <div class="kpi-sub">
+          MAXDOP: {{ metrics.config.maxdop if metrics.config.maxdop is not none else 'N/A' }}
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">TempDB Size</div>
+        <div class="kpi-value">
+          {% if metrics.config.tempdb_total_gb is not none %}
+          {{ "%.2f"|format(metrics.config.tempdb_total_gb) }} GB
+          {% else %}
+          N/A
+          {% endif %}
+        </div>
+        <div class="kpi-sub">
+          Total size of tempdb files
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar + content -->
+    <div class="row g-4">
+      <!-- Sidebar -->
+      <div class="col-12 col-lg-3">
+        <div class="side-nav">
+          <div class="side-nav-title">Server</div>
+          <div class="side-nav-tabs" role="tablist">
+            <button type="button" class="side-tab active" data-panel="identity">Identity</button>
+            <button type="button" class="side-tab" data-panel="hardware">Hardware</button>
+            <button type="button" class="side-tab" data-panel="config">Config</button>
+            <button type="button" class="side-tab" data-panel="databases">DBs</button>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Main panels -->
+      <div class="col-12 col-lg-9">
+        <!-- Identity -->
+        <section id="panel-identity" class="section-card section-panel active-panel mb-3">
+          <h6 class="section-title">Identity & Environment</h6>
+          <div class="info-grid">
+            <div class="info-item">
+              <div class="info-label">Instance name</div>
+              <div class="info-value">{{ metrics.identity.instance_name or 'N/A' }}</div>
+            </div>
+
+            <div class="info-item">
+              <div class="info-label">Machine / Host</div>
+              <div class="info-value">{{ metrics.identity.machine_name or 'N/A' }}</div>
+            </div>
+
+            <div class="info-item">
+              <div class="info-label">SQL Version</div>
+              <div class="info-value">
+                {{ metrics.identity.sql_version or 'N/A' }}
+              </div>
+            </div>
+
+            <div class="info-item">
+              <div class="info-label">Edition</div>
+              <div class="info-value">{{ metrics.identity.edition or 'N/A' }}</div>
+            </div>
+
+            <div class="info-item">
+              <div class="info-label">Collation</div>
+              <div class="info-value">{{ metrics.identity.collation or 'N/A' }}</div>
+            </div>
+
+            <!-- Windows version in its own block -->
+            <div class="info-item">
+              <div class="info-label">Windows Version</div>
+              <div class="info-value">
+                {{ metrics.identity.os_version or 'N/A' }}
+              </div>
+            </div>
+
+            <!-- OS build in a separate block -->
+            <div class="info-item">
+              <div class="info-label">OS Build</div>
+              <div class="info-value">
+                {{ metrics.identity.os_build or 'N/A' }}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Hardware -->
+        <section id="panel-hardware" class="section-card section-panel mb-3">
+          <h6 class="section-title">Hardware & Capacity</h6>
+
+          <div class="info-grid mb-3">
+            <div class="info-item">
+              <div class="info-label">Logical CPUs</div>
+              <div class="info-value">
+                {{ metrics.hardware.logical_cpus or 'N/A' }}
+              </div>
+            </div>
+
+            <div class="info-item">
+              <div class="info-label">Total RAM</div>
+              <div class="info-value">
+                {% if metrics.hardware.total_memory_gb %}
+                {{ "%.1f"|format(metrics.hardware.total_memory_gb) }} GB
+                {% else %}
+                N/A
+                {% endif %}
+              </div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">SQL memory target</div>
+              <div class="info-value">
+                {% if metrics.hardware.sql_memory_gb %}
+                {{ "%.1f"|format(metrics.hardware.sql_memory_gb) }} GB
+                {% else %}
+                N/A
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-2">
+            <div class="info-label mb-1">Drives (space remaining)</div>
+            {% if metrics.hardware.drives %}
+            {% for d in metrics.hardware.drives %}
+            {% set used_pct = (100 - d.free_pct) if d.free_pct is not none else None %}
+            <div class="disk-row">
+              <div class="disk-row-header">
+                <div>
+                  <strong>{{ d.mount_point }}</strong>
+                  <span class="text-muted">({{ d.name }})</span>
+                </div>
+                <div>
+                  {{ "%.1f"|format(d.free_gb) if d.free_gb is not none else "?" }} /
+                  {{ "%.1f"|format(d.total_gb) if d.total_gb is not none else "?" }} GB
+                  ({{ d.free_pct if d.free_pct is not none else "?" }}% free)
+                </div>
+              </div>
+              <div class="progress">
+                {% if used_pct is not none %}
+                {% set bar_class =
+                'progress-bar-low' if used_pct < 60 else 'progress-bar-mid' if used_pct < 85 else 'progress-bar-high' %}
+                  <div class="progress-bar {{ bar_class }}" role="progressbar" style="width: {{ used_pct }}%;">
+              </div>
+              {% else %}
+              <div class="progress-bar" style="width: 0%;"></div>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+          {% else %}
+          <div class="text-muted small">No drive info available.</div>
+          {% endif %}
+      </div>
+      </section>
+
+      <!-- Config -->
+      <section id="panel-config" class="section-card section-panel mb-3">
+        <h6 class="section-title">Instance Configuration</h6>
+
+        <div class="info-grid">
+          <div class="info-item">
+            <div class="info-label">Max server memory</div>
+            <div class="info-value">
+              {{ metrics.config.max_server_memory_mb if metrics.config.max_server_memory_mb is not none else 'N/A' }} MB
+            </div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Min server memory</div>
+            <div class="info-value">
+              {{ metrics.config.min_server_memory_mb if metrics.config.min_server_memory_mb is not none else 'N/A' }} MB
+            </div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">MAXDOP</div>
+            <div class="info-value">
+              {{ metrics.config.maxdop if metrics.config.maxdop is not none else 'N/A' }}
+            </div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Cost threshold for parallelism</div>
+            <div class="info-value">
+              {{ metrics.config.cost_threshold_for_parallelism if metrics.config.cost_threshold_for_parallelism is not
+              none else 'N/A' }}
+            </div>
+          </div>
+
+          <div class="info-item">
+            <div class="info-label">Default data path</div>
+            <div class="info-value">
+              {{ metrics.config.default_data_path or 'N/A' }}
+            </div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Default log path</div>
+            <div class="info-value">
+              {{ metrics.config.default_log_path or 'N/A' }}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Databases -->
+      <section id="panel-databases" class="section-card section-panel mb-3">
+        <h6 class="section-title">Database Inventory Summary</h6>
+
+        <div class="info-grid mb-3">
+          <div class="info-item">
+            <div class="info-label">Total DBs</div>
+            <div class="info-value">
+              {{ metrics.db_summary.total_databases or 'N/A' }}
+            </div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">User DBs</div>
+            <div class="info-value">
+              {{ metrics.db_summary.user_databases or 'N/A' }}
+            </div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">System DBs</div>
+            <div class="info-value">
+              {{ metrics.db_summary.system_databases or 'N/A' }}
+            </div>
+          </div>
+          <div class="info-item">
+            <div class="info-label">Total size (user DBs)</div>
+            <div class="info-value">
+              {% if metrics.db_summary.total_size_gb %}
+              {{ "%.2f"|format(metrics.db_summary.total_size_gb) }} GB
+              {% else %}
+              N/A
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- Object inventory -->
+
+
+        <div class="row g-3 mb-3">
+          <div class="col-12 col-md-6">
+            <div class="info-label mb-1">By state</div>
+            <div class="db-chip-list">
+              {% for state, cnt in metrics.db_summary.state_counts.items() %}
+              <span class="db-chip">
+                <strong>{{ state }}</strong>
+                <span>{{ cnt }}</span>
+              </span>
+              {% else %}
+              <span class="text-muted small">No data</span>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="col-12 col-md-6">
+            <div class="info-label mb-1">By recovery model</div>
+            <div class="db-chip-list">
+              {% for rm, cnt in metrics.db_summary.recovery_model_counts.items() %}
+              <span class="db-chip">
+                <strong>{{ rm }}</strong>
+                <span>{{ cnt }}</span>
+              </span>
+              {% else %}
+              <span class="text-muted small">No data</span>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <div class="info-label mb-1">Top 5 databases by size</div>
+          <ul class="top-db-list">
+            {% for db in metrics.db_summary.top_databases_by_size %}
+            <li class="top-db-item d-flex justify-content-between align-items-center">
+              <span class="top-db-name">{{ db.database_name }}</span>
+              <span class="top-db-size">{{ "%.2f"|format(db.size_gb) }} GB</span>
+            </li>
+            {% else %}
+            <li class="text-muted small">No size data.</li>
+            {% endfor %}
+          </ul>
+        </div>
+      </section>
+    </div> <!-- /col-9 -->
+    </div> <!-- /row -->
+  </main>
+
+  {% include "_dsx_inventory_footer.html" %}
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const base = "{{ request.script_root }}";
+    // DB dashboard navigation
+    const btn = document.getElementById("viewDbBtn");
+    const select = document.getElementById("dbSelect");
+
+    if (btn && select) {
+      btn.addEventListener("click", () => {
+        const dbName = select.value;
+        if (!dbName) return;
+        const url = `${base}/server/{{ server.id }}/db/` + encodeURIComponent(dbName);
+        window.location.href = url;
+      });
+    }
+
+    // Sidebar: switch panels
+    const sidebarItems = document.querySelectorAll(".side-tab"); const panels = document.querySelectorAll(".section-panel");
+
+    sidebarItems.forEach((item) => {
+      item.addEventListener("click", () => {
+        const panelKey = item.getAttribute("data-panel");
+        const targetId = `panel-${panelKey}`;
+
+        sidebarItems.forEach((i) => i.classList.remove("active"));
+        item.classList.add("active");
+
+        panels.forEach((p) => {
+          if (p.id === targetId) {
+            p.classList.add("active-panel");
+          } else {
+            p.classList.remove("active-panel");
+          }
+        });
+
+        const target = document.getElementById(targetId);
+        if (target) {
+          window.scrollTo({
+            top: target.offsetTop - 80,
+            behavior: "smooth"
+          });
+        }
+      });
+    });
+  </script>
+
+</body>
+
+</html>

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <g fill="none" stroke="#000" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Package document -->
+    <path d="M64 44h92l36 36v132c0 12-10 22-22 22H86c-12 0-22-10-22-22V44z"></path>
+    <path d="M156 44v40h40"></path>
+
+    <!-- Pipeline blocks -->
+    <rect x="84" y="108" width="44" height="30" rx="10"></rect>
+    <rect x="152" y="108" width="44" height="30" rx="10"></rect>
+    <rect x="118" y="160" width="44" height="30" rx="10"></rect>
+
+    <!-- Connectors -->
+    <path d="M128 123h24"></path>
+    <path d="M174 138v22"></path>
+    <path d="M174 160h-12"></path>
+
+    <!-- Connector dots (SSIS-ish vibe) -->
+    <circle cx="128" cy="123" r="3"></circle>
+    <circle cx="152" cy="123" r="3"></circle>
+    <circle cx="174" cy="160" r="3"></circle>
+    <circle cx="162" cy="160" r="3"></circle>
+  </g>
+</svg>

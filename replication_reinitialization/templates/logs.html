@@ -1,0 +1,131 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Logs | DataSolveX</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='global.css') }}" />
+</head>
+<body class="replication-summary-page">
+  <header class="app-header">
+    <div class="app-nav">
+      <div class="app-nav-container">
+        <a href="{{ url_for('home') }}" class="app-brand">DataSolveX</a>
+        <ul class="app-nav-menu"></ul>
+      </div>
+    </div>
+ 
+    <div class="app-breadcrumb">
+      <div class="app-breadcrumb-container">
+        <ul class="breadcrumb-list">
+          <li class="breadcrumb-item"><a href="{{ url_for('home') }}">SQL Server Main</a></li>
+          <li class="breadcrumb-item active">Logs</li>
+        </ul>
+ 
+        <div class="breadcrumb-actions">
+          <a href="{{ url_for('script1') }}" class="app-nav-link breadcrumb-link">Script1</a>
+          <a href="{{ url_for('script2') }}" class="app-nav-link breadcrumb-link">Script2</a>
+        </div>
+      </div>
+    </div>
+  </header>
+ 
+  <div class="page-wrapper">
+    <main class="page-content">
+      <div class="container-sm">
+        <header class="page-header">
+          <h1 class="page-title">Execution Logs</h1>
+          <p class="page-subtitle">
+            Source: {{ log_instance }} / {{ log_database }}
+          </p>
+        </header>
+ 
+        <section class="card-simple">
+          <h2 class="font-size-lg font-weight-bold mb-2">script1log (Top 50)</h2>
+ 
+          {% if s1_err %}
+            <div class="alert alert-error">
+              <div class="alert-icon">?</div>
+              <div class="alert-content">
+                <div class="alert-title">Failed to load script1log</div>
+                <pre class="code-block">{{ s1_err }}</pre>
+              </div>
+            </div>
+          {% else %}
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    {% for c in s1_cols %}
+                      <th>{{ c }}</th>
+                    {% endfor %}
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in s1_rows %}
+                    <tr>
+                      {% for v in row %}
+                        <td>{{ v }}</td>
+                      {% endfor %}
+                    </tr>
+                  {% endfor %}
+                  {% if s1_rows|length == 0 %}
+                    <tr><td colspan="{{ s1_cols|length }}">No rows</td></tr>
+                  {% endif %}
+                </tbody>
+              </table>
+            </div>
+          {% endif %}
+        </section>
+ 
+        <section class="card-simple mt-4">
+          <h2 class="font-size-lg font-weight-bold mb-2">script2log (Top 50)</h2>
+ 
+          {% if s2_err %}
+            <div class="alert alert-error">
+              <div class="alert-icon">?</div>
+              <div class="alert-content">
+                <div class="alert-title">Failed to load script2log</div>
+                <pre class="code-block">{{ s2_err }}</pre>
+              </div>
+            </div>
+          {% else %}
+            <div class="table-container">
+              <table>
+                <thead>
+                  <tr>
+                    {% for c in s2_cols %}
+                      <th>{{ c }}</th>
+                    {% endfor %}
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for row in s2_rows %}
+                    <tr>
+                      {% for v in row %}
+                        <td>{{ v }}</td>
+                      {% endfor %}
+                    </tr>
+                  {% endfor %}
+                  {% if s2_rows|length == 0 %}
+                    <tr><td colspan="{{ s2_cols|length }}">No rows</td></tr>
+                  {% endif %}
+                </tbody>
+              </table>
+            </div>
+          {% endif %}
+        </section>
+      </div>
+    </main>
+ 
+    <footer class="footer">
+      <div class="footer-content">
+        <div class="footer-bottom">Replication Control · DataSolveX</div>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>
+ 
+ 
+ 

@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SSIS Configuration Table Update</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='ssis.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='/global.css') }}">
+
+<style>
+
+.info-container {
+    position: relative;
+    display: inline-block;
+    margin-left: 4px;
+}
+.info-icon {
+    background: #0d6efd;
+    color: white;
+    font-size: 11px;
+    border-radius: 50%;
+    padding: 0px 6px;
+    cursor: pointer;
+}
+.info-tooltip {
+    display: none;
+    position: absolute;
+    top: 18px;
+    left: 0;
+    background: #222;
+    color: white;
+    padding: 6px 10px;
+    font-size: 12px;
+    border-radius: 5px;
+    width: 180px;
+    z-index: 1000;
+}
+.info-container:hover .info-tooltip {
+    display: block;
+}
+
+/* Logs Popup */
+#logsPopup {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 6000;
+}
+#logsBox {
+    background: white;
+    width: 90%;
+    max-width: 1200px;
+    max-height: 80vh;
+    border-radius: 10px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 0 25px rgba(0,0,0,0.25);
+}
+#logsScroll {
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    padding: 0;
+    background: white;
+    flex: 1;
+}
+.closeBtn {
+    cursor: pointer;
+    border: none;
+    background: none;
+    font-size: 26px;
+    font-weight: 700;
+}
+
+/* Success / Fail Message Box */
+#statusBox {
+    margin-top: 15px;
+    padding: 13px 18px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 15px;
+    display: none;
+}
+.status-success {
+    background: #0f5132;
+    color: #d1e7dd;
+    border: 1px solid #badbcc;
+}
+.status-fail {
+    background: #842029;
+    color: #f8d7da;
+    border: 1px solid #f5c2c7;
+}
+
+/* Username Modal */
+#userModal {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 7000;
+}
+.modal-box {
+    background: white;
+    width: 350px;
+    padding: 20px;
+    border-radius: 6px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="page-wrapper" style="display:flex;flex-direction:column;min-height:100vh;">
+
+<header class="app-header">
+    <!-- Top nav bar -->
+    <div class="app-nav">
+      <div class="app-nav-container">
+        <a href="{{ url_for('index') }}" class="app-brand">DataSolveX</a>
+        <ul class="app-nav-menu">
+        </ul>
+      </div>
+    </div>
+
+    <!-- Breadcrumb bar -->
+    <!-- Breadcrumb bar -->
+<div class="app-breadcrumb">
+  <div class="app-breadcrumb-container">
+
+    <ul class="breadcrumb-list">
+      <li class="breadcrumb-item">
+        <a href="{{ url_for('sqlserver_main') }}">SQL Server Main</a>
+      </li>
+      <li class="breadcrumb-item active">SSIS Configuration Table Update</li>
+    </ul>
+
+    <!-- RIGHT SIDE ACTIONS (Settings / Logs) -->
+    <ul class="breadcrumb-actions">
+      <li><a class="nav-link" id="logsBtn">Logs</a></li>
+    </ul>
+  </div>
+</div>
+
+</header>
+<div class="page-title-bar">
+    <div class="page-title-container">
+        <h1>SSIS Configuration Table Update</h1>
+    </div>
+</div>
+
+
+
+
+
+<!-- Page Content -->
+<div class="page-content" style="flex:1;display:flex;flex-direction:column;align-items:center;padding-top:25px;">
+
+<div class="card-glass" style="width:100%;max-width:1200px;padding:32px 40px;border-radius:18px;margin-bottom:40px;">
+
+    <h3 style="font-size:20px;font-weight:700;margin-bottom:20px;">Configuration</h3>
+
+    <form id="updateForm">
+
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:26px;margin-bottom:32px;">
+
+            <!-- Server -->
+            <div class="form-group">
+                <label>
+                    SQL Server Name
+                    <span class="info-container">
+                        <span class="info-icon">i</span>
+                        <span class="info-tooltip">Enter the server containing SSIS configuration table.</span>
+                    </span>
+                </label>
+                <input type="text" id="server" name="server" required>
+            </div>
+
+            <!-- Database -->
+            <div class="form-group">
+                <label>
+                    Database Name
+                    <span class="info-container">
+                        <span class="info-icon">i</span>
+                        <span class="info-tooltip">Select the database hosting the configuration table.</span>
+                    </span>
+                </label>
+                <select id="database" name="database" required>
+                    <option value="">-- Select Database --</option>
+                </select>
+            </div>
+
+            <!-- Config Table -->
+            <div class="form-group">
+                <label>
+                    SSIS Configuration Table
+                    <span class="info-container">
+                        <span class="info-icon">i</span>
+                        <span class="info-tooltip">Table storing connection strings & credentials.</span>
+                    </span>
+                </label>
+                <input type="text" id="config_table" name="config_table" required>
+            </div>
+
+            <!-- Backup Table -->
+            <div class="form-group">
+                <label>
+                    Backup Table Name
+                    <span class="info-container">
+                        <span class="info-icon">i</span>
+                        <span class="info-tooltip">Backup table recreated on each execution.</span>
+                    </span>
+                </label>
+                <input type="text" id="backup_table" name="backup_table" required>
+            </div>
+
+        </div>
+
+        <button type="button" id="runBtn" class="btn-primary">Run Update</button>
+        <button type="reset" id="resetBtn" class="btn-secondary">Reset</button>
+
+        <div id="statusBox"></div>
+
+    </form>
+
+</div>
+
+<!-- Recent Executions -->
+<div class="card-glass"
+     style="width:100%;max-width:1200px;padding:32px 40px;border-radius:18px;">
+
+    <h3 style="font-size:20px;font-weight:700;">Recent Executions</h3>
+
+    <table class="table table-striped" style="width:100%;border-collapse:collapse;">
+        <thead>
+        <tr>
+            <th>Executed By</th>
+            <th>Start Time</th>
+            <th>End Time</th>
+            <th>Duration (seconds)</th>
+            <th>Status</th>
+        </tr>
+        </thead>
+        <tbody id="recentBody">
+        {% for r in recent %}
+            <tr>
+                <td>{{ r.ExecutedBy }}</td>
+                <td>{{ r.StartTime }}</td>
+                <td>{{ r.EndTime }}</td>
+                <td>{{ r.Duration }}</td>
+                <td>{{ r.ExecutionStatus }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+</div>
+
+</div>
+
+<footer class="footer" style="padding-top:14px;padding-bottom:14px;">
+    <div class="footer-bottom">SSIS Configuration Table Update · DataSolveX</div>
+</footer>
+
+</div>
+
+<!-- LOG POPUP -->
+<div id="logsPopup">
+    <div id="logsBox">
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <h3 style="margin:0;font-size:20px;font-weight:700;">Execution Logs</h3>
+            <button class="closeBtn" onclick="closeLogs()">&times;</button>
+        </div>
+
+        <div id="logsScroll">
+            <table class="table table-striped">
+                <thead>
+                <tr>
+                    <th>Executed By</th>
+                    <th>
+    START TIME
+    <span class="filter-icon" id="startTimeFilterIcon">▼</span>
+</th>
+
+                    <th>End Time</th>
+                    <th>Duration (seconds)</th>
+                    <th>Status</th>
+                </tr>
+                <tr>
+    <th>
+        <select id="filterExecBy" class="filter-select">
+            <option value="">All</option>
+        </select>
+    </th>
+
+    <th>
+        
+        
+        <select id="filterStart" class="filter-select">
+                            <option value="">All</option>
+                            <option value="24h">Last 24 Hours</option>
+                            <option value="7d">Last 7 Days</option>
+                            <option value="thisweek">This Week</option>
+                            <option value="thismonth">This Month</option>
+        </select>
+    </th>
+
+    <th></th>
+    <th></th>
+
+    <th>
+        <select id="filterStatus" class="filter-select">
+            <option value="">All</option>
+            <option value="success">Success</option>
+            <option value="failed">Failed</option>
+        </select>
+    </th>
+</tr>
+
+                </thead>
+                <tbody id="logsBody"></tbody>
+            </table>
+        </div>
+
+    </div>
+</div>
+<!-- Start Time Custom Date Filter -->
+<div id="startTimeFilterPanel">
+    <label>
+        From
+        <input type="date" id="startDate">
+    </label>
+    <label>
+        To
+        <input type="date" id="endDate">
+    </label>
+    <div style="text-align:right;">
+        <button type="button" id="applyStartDateFilter">Apply</button>
+        <button type="button" id="clearStartDateFilter">Clear</button>
+    </div>
+</div>
+
+<script>
+
+
+/* Load databases */
+document.getElementById("server").addEventListener("blur", async ()=>{
+    let server = document.getElementById("server").value.trim();
+    if(!server) return;
+
+    let res = await fetch("{{ url_for('ssis.get_databases') }}", {
+        method: "POST",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({server})
+    });
+
+    let data = await res.json();
+    let ddl = document.getElementById("database");
+    ddl.innerHTML = "<option value=''>-- Select Database --</option>";
+
+    if(data.success){
+        data.databases.forEach(db => ddl.innerHTML += `<option value="${db}">${db}</option>`);
+    } else {
+        alert(data.message);
+    }
+});
+
+/* Run update */
+document.getElementById("runBtn").onclick = async () => {
+    let box = document.getElementById("statusBox");
+    box.style.display = "none";
+
+
+    let fd = new FormData();
+    fd.append("server", document.getElementById("server").value);
+    fd.append("database", document.getElementById("database").value);
+    fd.append("config_table", document.getElementById("config_table").value);
+    fd.append("backup_table", document.getElementById("backup_table").value);
+   
+
+    let res = await fetch("{{ url_for('ssis.run_update') }}", {method:"POST", body:fd});
+    let data = await res.json();
+
+    if(data.status === "Success"){
+        box.className = "status-success";
+        box.textContent = "✔ Update Completed Successfully";
+    } else {
+        box.className = "status-fail";
+        box.textContent = "✘ FAILED: " + data.error;
+    }
+
+    box.style.display = "block";
+    loadRecent();
+};
+
+/* Refresh recent */
+async function loadRecent(){
+    let res = await fetch("{{ url_for('ssis.all_logs_json') }}");
+    let data = await res.json();
+
+    let tb = document.getElementById("recentBody");
+    tb.innerHTML = "";
+
+    data.slice(0,5).forEach(r=>{
+        tb.innerHTML += `
+            <tr>
+                <td>${r.executed_by}</td>
+                <td>${r.start_time}</td>
+                <td>${r.end_time}</td>
+                <td>${r.duration}</td>
+                <td>${r.status}</td>
+            </tr>`;
+    });
+}
+
+/* Logs popup */
+document.getElementById("logsBtn").onclick = async ()=>{
+
+    let res = await fetch("{{ url_for('ssis.all_logs_json') }}");
+    let data = await res.json();
+
+    let tb = document.getElementById("logsBody");
+    tb.innerHTML = "";
+
+    data.forEach(r=>{
+        tb.innerHTML += `
+            <tr>
+                <td>${r.executed_by}</td>
+                <td>${r.start_time}</td>
+                <td>${r.end_time}</td>
+                <td>${r.duration}</td>
+                <td>${r.status}</td>
+            </tr>`;
+    });
+
+    buildLogFilters();     // ✅ AFTER rows
+    applyLogFilters();     // ✅ AFTER rows
+
+    document.getElementById("logsPopup").style.display = "flex";
+};
+
+
+function closeLogs(){
+    document.getElementById("logsPopup").style.display = "none";
+}
+/* ===== LOG FILTER LOGIC ===== */
+
+function buildLogFilters(){
+    const rows = [...document.querySelectorAll("#logsBody tr")];
+    const execSet = new Set();
+
+    rows.forEach(r => execSet.add(r.children[0].textContent.trim()));
+
+    const execSel = document.getElementById("filterExecBy");
+    execSel.innerHTML = `<option value="">All</option>` +
+        [...execSet].sort().map(v =>
+            `<option value="${v.toLowerCase()}">${v}</option>`
+        ).join("");
+}
+
+function timeMatch(value, filter){
+    if(!filter) return true;
+
+    const dt = new Date(value);
+    const now = new Date();
+    const day = 86400000;
+
+    if(filter==="24h") return now - dt <= day;
+    if(filter==="7d") return now - dt <= 7*day;
+
+    if(filter==="thisweek"){
+        const s = new Date(now);
+        s.setDate(now.getDate() - now.getDay());
+        s.setHours(0,0,0,0);
+        return dt >= s;
+    }
+    if(filter==="thismonth"){
+        return dt.getMonth()===now.getMonth() &&
+               dt.getFullYear()===now.getFullYear();
+    }
+    return true;
+}
+
+function applyLogFilters(){
+    const fExec = document.getElementById("filterExecBy").value;
+    const fStart = document.getElementById("filterStart").value;
+    const fStatus = document.getElementById("filterStatus").value;
+
+    const sd = document.getElementById("startDate").value;
+    const ed = document.getElementById("endDate").value;
+
+    [...document.querySelectorAll("#logsBody tr")].forEach(r=>{
+        const exec = r.children[0].textContent.toLowerCase();
+        const start = new Date(r.children[1].textContent);
+        const status = r.children[4].textContent.toLowerCase();
+
+        let ok =
+            (!fExec || exec.includes(fExec)) &&
+            timeMatch(r.children[1].textContent, fStart) &&
+            (!fStatus || status.includes(fStatus));
+
+        if(sd){
+            const sdt = new Date(sd + "T00:00:00");
+            if(start < sdt) ok = false;
+        }
+        if(ed){
+            const edt = new Date(ed + "T23:59:59");
+            if(start > edt) ok = false;
+        }
+
+        r.style.display = ok ? "" : "none";
+    });
+}
+
+document.getElementById("filterExecBy").onchange = applyLogFilters;
+document.getElementById("filterStart").onchange = applyLogFilters;
+document.getElementById("filterStatus").onchange = applyLogFilters;
+
+/* Calendar panel */
+document.getElementById("startTimeFilterIcon").onclick = (e)=>{
+    const p = document.getElementById("startTimeFilterPanel");
+    const r = e.target.getBoundingClientRect();
+    p.style.left = (r.right + 4) + "px";
+    p.style.top  = (r.bottom + 4) + "px";
+    p.style.display = p.style.display==="block" ? "none" : "block";
+};
+
+document.getElementById("applyStartDateFilter").onclick = ()=>{
+    document.getElementById("startTimeFilterPanel").style.display="none";
+    applyLogFilters();
+};
+document.getElementById("clearStartDateFilter").onclick = ()=>{
+    startDate.value=""; endDate.value="";
+    document.getElementById("startTimeFilterPanel").style.display="none";
+    applyLogFilters();
+};
+
+
+
+</script>
+
+</body>
+</html>

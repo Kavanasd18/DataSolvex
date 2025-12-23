@@ -1,0 +1,587 @@
+/* ===== DB REFRESH PAGE - CUSTOM STYLES ===== */
+/* 
+   NOTE: This file contains DB Refresh-specific styles not found in global.css
+   
+   NEW DESIGN ELEMENTS (Not in global.css):
+   - .db-* classes: Complete Azure portal styling for DB refresh operations
+   - Page-specific layout: Header, config panel, table sections
+   - Custom status indicators and badges for step tracking
+   - Collapsible configuration panel with smooth animations
+   - Table-first layout design for database refresh workflow
+   
+   OVERLAPPING WITH GLOBAL.CSS (Can be refactored):
+   - .db-btn-primary / .db-btn-default: Similar to button styles in global.css
+   - .db-input / .db-label: Form styling (could use global.css form system)
+   - Status colors: Use Azure color palette (#0078d4, #107c10, #a4262c)
+*/
+
+/* ===== PAGE CONTAINER & LAYOUT ===== */
+body {
+  background: #f5f5f5;
+  margin: 0;
+  padding-top: 84px;
+}
+
+.db-refresh-container {
+  max-width: 100%;
+  padding: 0;
+  margin: 0;
+}
+
+/* ===== PAGE HEADER ===== */
+.db-page-header {
+  background: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  padding: 16px 24px;
+  margin-bottom: 0;
+}
+
+.db-header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 100%;
+}
+
+.db-title-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.db-title-section svg {
+  color: #0078d4;
+  flex-shrink: 0;
+}
+
+.db-page-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #323130;
+  margin: 0 0 4px 0;
+  line-height: 1.2;
+}
+
+.db-page-subtitle {
+  font-size: 13px;
+  color: #605e5c;
+  margin: 0;
+}
+
+.db-header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ===== AZURE-STYLE BUTTONS (SOLID, NO GRADIENTS) ===== */
+.db-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  font-size: 14px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: all 0.1s ease;
+  background: transparent;
+  height: 32px;
+}
+
+.db-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.db-btn-primary {
+  background: #0078d4;
+  color: #ffffff;
+  border-color: #0078d4;
+}
+
+.db-btn-primary:hover {
+  background: #106ebe;
+  border-color: #106ebe;
+}
+
+.db-btn-primary:active {
+  background: #005a9e;
+  border-color: #005a9e;
+}
+
+.db-btn-default {
+  background: #ffffff;
+  color: #323130;
+  border-color: #8a8886;
+}
+
+.db-btn-default:hover {
+  background: #f3f2f1;
+  border-color: #323130;
+}
+
+.db-btn-default:active {
+  background: #edebe9;
+}
+
+/* ===== CONFIGURATION PANEL (COLLAPSIBLE) ===== */
+.db-config-panel {
+  background: #ffffff;
+  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 0;
+}
+
+.db-config-toggle {
+  width: 100%;
+  padding: 12px 24px;
+  background: #faf9f8;
+  border: none;
+  border-bottom: 1px solid #edebe9;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  color: #323130;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.1s ease;
+}
+
+.db-config-toggle:hover {
+  background: #f3f2f1;
+}
+
+.db-config-toggle svg {
+  transition: transform 0.2s ease;
+}
+
+.db-config-toggle.active svg {
+  transform: rotate(180deg);
+}
+
+.db-config-content {
+  padding: 20px 24px;
+  background: #ffffff;
+}
+
+.db-config-form {
+  max-width: 1400px;
+}
+
+.db-config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px 20px;
+  margin-bottom: 16px;
+}
+
+.db-form-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.db-form-field-full {
+  grid-column: 1 / -1;
+}
+
+.db-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #323130;
+  margin-bottom: 6px;
+}
+
+.db-required {
+  color: #a4262c;
+}
+
+.db-input {
+  padding: 6px 8px;
+  border: 1px solid #8a8886;
+  border-radius: 2px;
+  font-size: 14px;
+  background: #ffffff;
+  color: #323130;
+  transition: border-color 0.1s ease;
+  height: 32px;
+}
+
+.db-input:focus {
+  outline: none;
+  border-color: #0078d4;
+}
+
+.db-input:hover:not(:focus):not([readonly]) {
+  border-color: #323130;
+}
+
+.db-input[readonly] {
+  background: #f3f2f1;
+  color: #605e5c;
+  cursor: not-allowed;
+}
+
+.db-config-actions {
+  display: flex;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #edebe9;
+}
+
+/* ===== TABLE SECTION (MAIN CONTENT AREA) ===== */
+.db-table-section {
+  background: #ffffff;
+  margin: 0;
+  overflow-x: auto;
+}
+
+.db-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #ffffff;
+  font-size: 13px;
+}
+
+.db-table thead {
+  background: #faf9f8;
+  border-top: 1px solid #e0e0e0;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.db-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #323130;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.db-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f3f2f1;
+  color: #323130;
+  vertical-align: middle;
+}
+
+.db-table tbody tr {
+  transition: background 0.1s ease;
+}
+
+.db-table tbody tr:hover {
+  background: #f9f9f9;
+}
+
+/* ===== STATUS INDICATORS ===== */
+.db-status {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.db-status-pending {
+  color: #605e5c;
+}
+
+.db-status-running {
+  color: #0078d4;
+  font-weight: 600;
+}
+
+.db-status-success {
+  color: #107c10;
+  font-weight: 600;
+}
+
+.db-status-error {
+  color: #a4262c;
+  font-weight: 600;
+}
+
+/* ===== BADGE SYSTEM (STEP VALIDATION INDICATORS) ===== */
+.db-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.db-badge-gray {
+  background: #edebe9;
+  color: #605e5c;
+}
+
+.db-badge-blue {
+  background: #deecf9;
+  color: #0078d4;
+}
+
+.db-badge-green {
+  background: #dff6dd;
+  color: #107c10;
+}
+
+.db-badge-red {
+  background: #fde7e9;
+  color: #a4262c;
+}
+
+/* ===== TIME DISPLAY ===== */
+.db-time {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 13px;
+  color: #605e5c;
+}
+
+/* ===== LINK STYLING ===== */
+.db-link {
+  color: #0078d4;
+  text-decoration: none;
+  font-weight: 400;
+  transition: color 0.1s ease;
+}
+
+.db-link:hover {
+  color: #106ebe;
+  text-decoration: underline;
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+@media (max-width: 768px) {
+  .db-header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .db-header-actions {
+    width: 100%;
+  }
+
+  .db-btn {
+    flex: 1;
+  }
+
+  .db-config-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .db-table-section {
+    overflow-x: scroll;
+  }
+
+  .db-table {
+    min-width: 900px;
+  }
+}
+
+/* ===== UTILITY CLASSES ===== */
+.mt-4 {
+  margin-top: 1rem;
+}
+
+.mb-4 {
+  margin-bottom: 1rem;
+}
+
+/* ===== Staging Server Search Card (DataSolveX themed) ===== */
+
+/* Center the block and make it feel like an Azure-style card */
+
+body {
+
+  /* you already set background + font in global; this only ensures spacing */
+
+  background-color: var(--light);
+
+}
+
+/* Only do this on this page's container (assuming this CSS is page-specific) */
+
+.container {
+
+  max-width: 520px;
+
+  margin: var(--space-2xl) auto var(--space-3xl) auto;
+
+  padding: var(--space-xl);
+
+  background: rgba(255, 255, 255, 0.96);
+
+  border-radius: var(--radius-lg);
+
+  border: 1px solid rgba(202, 240, 248, 0.9);
+
+  box-shadow: var(--shadow-md);
+
+}
+
+/* Title – match portal style */
+
+.container h3 {
+
+  margin-bottom: var(--space-sm);
+
+  font-size: 1.1rem;
+
+  font-weight: 700;
+
+  color: var(--french-blue);
+
+  letter-spacing: 0.01em;
+
+}
+
+/* Optional small subtitle below heading if you ever add a <p> */
+
+.container h3+p {
+
+  margin-bottom: var(--space-md);
+
+  font-size: 0.85rem;
+
+  color: var(--gray);
+
+}
+
+/* Input – build on your existing input[type="text"] styles */
+
+.container input#serverName {
+
+  width: 100%;
+
+  box-sizing: border-box;
+
+  margin-top: var(--space-sm);
+
+  margin-bottom: var(--space-sm);
+
+  /* reuse global form styles but tweak border for ocean theme */
+
+  border-radius: 4px;
+
+  border: 1px solid #8a8886;
+
+  font-size: 0.875rem;
+
+}
+
+.container input#serverName:focus {
+
+  border-color: var(--primary);
+
+  box-shadow: 0 0 0 1px rgba(0, 150, 199, 0.25);
+
+}
+
+/* Button – Azure/Fabric style primary action */
+
+.container button {
+
+  width: 100%;
+
+  margin-top: var(--space-xs);
+
+  margin-bottom: var(--space-sm);
+
+  padding: 8px 20px;
+
+  border-radius: 4px;
+
+  border: 1px solid var(--primary);
+
+  background: var(--primary);
+
+  color: #ffffff;
+
+  font-size: 0.875rem;
+
+  font-weight: 600;
+
+  cursor: pointer;
+
+  display: inline-flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  gap: 6px;
+
+  transition: var(--transition-fast);
+
+  min-height: 32px;
+
+}
+
+.container button:hover {
+
+  background: var(--primary-dark);
+
+  border-color: var(--primary-dark);
+
+}
+
+.container button:active {
+
+  background: var(--deep-twilight);
+
+}
+
+/* Result list container */
+
+.db-list {
+
+  margin-top: var(--space-md);
+
+  max-height: 260px;
+
+  overflow-y: auto;
+
+}
+
+/* Individual DB items – clickable, ocean tinted */
+
+.db-item {
+
+  padding: 10px 12px;
+
+  margin-bottom: 6px;
+
+  border-radius: var(--radius-sm);
+
+  background: rgba(255, 255, 255, 0.9);
+
+  border: 1px solid rgba(202, 240, 248, 0.8);
+
+  font-size: 0.875rem;
+
+  color: var(--dark-soft);
+
+  cursor: pointer;
+
+  transition: background var(--transition-fast),
+
+    border-color var(--transition-fast),
+
+    transform 0.12s ease;
+
+}
+
+.db-item:hover {
+
+  background: rgba(173, 232, 244, 0.35);
+  /* frosted-blue-2 vibe */
+
+  border-color: var(--primary);
+
+  transform: translateY(-1px);
+
+}

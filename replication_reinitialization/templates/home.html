@@ -1,0 +1,133 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Logs | DataSolveX</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="{{url_for('replication.static',filename='global.css')}}" />
+  <link rel="stylesheet" href="{{url_for('replication.static',filename='reinit.css')}}" />
+  <style>
+    /* ----- Page spine: header -> content -> footer (footer sticks to bottom) ----- */
+    html,
+    body {
+      height: 100%;
+    }
+
+    body.replication-summary-page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ----- Center Step-1 / Step-2 row in the remaining space ----- */
+    /* Your cards are inside .row, so we center that row vertically + horizontally */
+    body.replication-summary-page>.row {
+      flex: 1;
+      /* take remaining height after header */
+      display: flex;
+      justify-content: center;
+      /* horizontal center */
+      align-items: center;
+      /* vertical center */
+      gap: 24px;
+      /* space between step1 and step2 */
+      padding: 24px;
+      /* breathing room on small screens */
+      max-width: 1100px;
+      /* keeps it clean on wide screens */
+      width: 100%;
+      margin: 0 auto;
+    }
+
+    /* Make columns behave nicely even if your grid css is minimal */
+    body.replication-summary-page>.row>.col-6 {
+      flex: 0 1 420px;
+      /* card width-ish */
+      max-width: 480px;
+      width: 100%;
+    }
+
+    /* Optional: ensure cards look centered within their column */
+    .card-simple {
+      text-align: left;
+    }
+
+    /* ----- Footer: stick to bottom ----- */
+    .footer {
+      margin-top: auto;
+      /* pushes footer to bottom */
+      width: 100%;
+    }
+
+    /* ----- Mobile: stack Step 1 and Step 2 vertically ----- */
+    @media (max-width: 768px) {
+      body.replication-summary-page>.row {
+        flex-direction: column;
+        gap: 16px;
+      }
+    }
+  </style>
+
+
+</head>
+
+<body class="replication-summary-page">
+  <header class="app-header">
+    <div class="app-nav">
+      <div class="app-nav-container">
+        <a href="/index" class="app-brand">DataSolveX</a>
+        <ul class="app-nav-menu"></ul>
+      </div>
+    </div>
+
+    <div class="app-breadcrumb">
+      <div class="app-breadcrumb-container">
+        <ul class="breadcrumb-list">
+          <li class="breadcrumb-item"><a href='/sqlserver_main'>SQL Server Main</a></li>
+          <li class="breadcrumb-item active">Replication Reinitialization</li>
+        </ul>
+
+
+      </div>
+  </header>
+
+  <div class="row">
+    <div class="col-6">
+      <div class="card-simple h-100">
+        <span class="badge badge-warning mb-2">Step 1</span>
+        <h2 class="font-size-lg font-weight-bold mb-2">Replication Drop</h2>
+        <a href="{{ url_for('replication.script1') }}" class="btn-danger">
+          Go to Replication Drop
+        </a>
+      </div>
+    </div>
+
+    <div class="col-6">
+      <div class="card-simple h-100">
+        <span class="badge badge-success mb-2">Step 2</span>
+        <h2 class="font-size-lg font-weight-bold mb-2">Reinitialize</h2>
+        <a href="{{ url_for('replication.script2') }}" class="btn-success">
+          Go to Reinitialize
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+
+  </div>
+  </main>
+  </div>
+
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-bottom">
+        Replication Reinitialization · DataSolveX
+      </div>
+    </div>
+  </footer>
+</body>
+
+</html>

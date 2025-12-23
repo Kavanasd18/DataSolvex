@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>User Clone Management - DataSolveX</title>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='userclone/styles.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='/global.css') }}">
+
+
+<style>
+    .wide-grid { display:flex; gap:18px; width:100%; }
+    .wide-grid .form-group { flex:1; min-width:0; }
+
+    #settingsOverlay {
+        position:fixed; inset:0;
+        background:rgba(0,0,0,0.35);
+        display:none; justify-content:flex-end; align-items:flex-start;
+        z-index:3000; opacity:0; transition:opacity .2s ease;
+    }
+    .settings-panel {
+        width:320px; background:#fff; padding:20px;
+        border-radius:0 0 0 8px; margin-top:40px;
+        box-shadow:-4px 0 18px rgba(0,0,0,.18);
+        animation:slideIn .25s ease;
+    }
+    @keyframes slideIn { from{transform:translateX(120%);} to{transform:translateX(0);} }
+
+    .output-pane {
+        height:150px; overflow:auto; background:#0b1220; color:#e6f7ff;
+        padding:10px; border-radius:8px; font-family:monospace; font-size:12px; white-space:pre-wrap;
+    }
+
+    .progress-wrap { display:flex; align-items:center; gap:10px; margin-top:10px; }
+    .progress { flex:1; background:rgba(255,255,255,0.12); height:10px; border-radius:999px; overflow:hidden; }
+    .progress-bar { height:100%; width:0%; background:linear-gradient(90deg,var(--primary),var(--secondary)); transition:width .3s ease; }
+    .percent-text { min-width:40px; text-align:right; font-weight:700; font-size:13px; }
+    .duration-text { min-width:60px; text-align:left; font-weight:600; font-size:13px; }
+
+    .file-label { display:inline-block; padding:8px 12px; border:2px dashed rgba(0,119,182,0.25); border-radius:6px; cursor:pointer; font-size:.9rem; }
+    .file-name { margin-left:8px; font-size:.9rem; }
+
+    .error-tooltip { color:#7f1d1d; font-size:.85rem; margin-top:4px; }
+
+    .btn-small { width:160px; padding:8px 0; font-size:15px; margin-top:14px; }
+
+    #logsPopup { display:none; }
+    #logsTableWrap {
+        max-height:500px; overflow:auto;
+        border:1px solid #ccc; border-radius:6px;
+        padding:10px; background:#fff;
+    }
+
+    .filter-input { width:100%; padding:4px 6px; font-size:13px; }
+    .filter-select { width:100%; padding:4px 6px; font-size:13px; }
+
+    .filter-icon { margin-left:4px; cursor:pointer; font-size:11px; }
+
+    #startTimeFilterPanel {
+        position:fixed;
+        background:#fff;
+        border:1px solid #ccc;
+        border-radius:4px;
+        padding:8px;
+        box-shadow:0 4px 10px rgba(0,0,0,0.15);
+        z-index:6001;
+        display:none;
+        min-width:180px;
+    }
+    #startTimeFilterPanel label {
+        display:block;
+        font-size:12px;
+        margin-bottom:6px;
+    }
+    #startTimeFilterPanel input[type="date"] {
+        width:100%;
+        box-sizing:border-box;
+    }
+    #startTimeFilterPanel button {
+        font-size:12px;
+        padding:3px 8px;
+        margin-left:4px;
+    }
+</style>
+</head>
+
+<body>
+
+<!-- LOGS POPUP -->
+<div id="logsPopup" style="
+    position:fixed; inset:0;
+    background:rgba(0,0,0,0.45);
+    display:none; z-index:5000;
+    justify-content:center; align-items:center;
+">
+    <div style="
+        background:white; width:90%; max-width:1200px;
+        max-height:80vh; border-radius:8px;
+        padding:20px; display:flex; flex-direction:column;
+        box-shadow:0 0 25px rgba(0,0,0,0.3);
+    ">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <h3 class="font-weight-bold" style="margin:0;">Execution Logs</h3>
+            <button id="closeLogsPopup" style="
+                background:none; border:none;
+                font-size:26px; cursor:pointer; line-height:20px;
+            ">&times;</button>
+        </div>
+
+        <div id="logsScroll" style="
+            overflow:auto; border:1px solid #ccc;
+            border-radius:6px; padding:0; background:white; flex:1;
+        ">
+            <table id="logsTable" class="recent-table" style="width:100%; border-collapse:collapse;">
+                <thead>
+                <tr>
+                    <th>Executed By</th>
+                    <th>Start Time <span class="filter-icon" id="startTimeFilterIcon">▼</span></th>
+                    <th>End Time</th>
+                    <th>Duration</th>
+                    <th>Execution Mode</th>
+                    <th>Execution Status</th>
+                </tr>
+
+                <!-- FILTER ROW -->
+                <tr>
+                    <th><select id="filterExecBy" class="filter-select"><option value="">All</option></select></th>
+
+                    <th>
+                        <select id="filterStart" class="filter-select">
+                            <option value="">All</option>
+                            <option value="24h">Last 24 Hours</option>
+                            <option value="7d">Last 7 Days</option>
+                            <option value="thisweek">This Week</option>
+                            <option value="thismonth">This Month</option>
+                        </select>
+                    </th>
+
+                    <th></th>
+
+                    <th></th>
+
+                    <th><select id="filterMode" class="filter-select"><option value="">All</option></select></th>
+
+                    <th>
+                        <select id="filterStatus" class="filter-select">
+                            <option value="">All</option>
+                            <option value="success">Success</option>
+                            <option value="failure">Failure</option>
+                        </select>
+                    </th>
+                </tr>
+                </thead>
+
+                <tbody id="logsBody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="startTimeFilterPanel">
+    <div style="font-weight:600;font-size:12px;margin-bottom:4px;">Start Time Range</div>
+    <label>From
+        <input type="date" id="startDate">
+    </label>
+    <label>To
+        <input type="date" id="endDate">
+    </label>
+    <div style="text-align:right;margin-top:4px;">
+        <button type="button" id="applyStartDateFilter">Apply</button>
+        <button type="button" id="clearStartDateFilter">Clear</button>
+    </div>
+</div>
+
+<header class="app-header">
+    <!-- Top nav bar -->
+    <div class="app-nav">
+      <div class="app-nav-container">
+        <a href="{{ url_for('index') }}" class="app-brand">DataSolveX</a>
+        <ul class="app-nav-menu">
+        </ul>
+      </div>
+    </div>
+
+    <!-- Breadcrumb bar -->
+    <!-- Breadcrumb bar -->
+<div class="app-breadcrumb">
+  <div class="app-breadcrumb-container">
+
+    <ul class="breadcrumb-list">
+      <li class="breadcrumb-item">
+        <a href="{{ url_for('sqlserver_main') }}">SQL Server Main</a>
+      </li>
+      <li class="breadcrumb-item active">User Clone Management</li>
+    </ul>
+
+    <!-- RIGHT SIDE ACTIONS (Settings / Logs) -->
+    <ul class="breadcrumb-actions">
+      <li><a class="nav-link" id="settingsBtn">Settings</a></li>
+      <li><a class="nav-link" id="logsBtn">Logs</a></li>
+    </ul>
+  </div>
+</div>
+
+</header>
+
+<div id="mainPage">
+<div class="container" style="padding-top:20px;">
+<h2 class="text-center">User Clone Management</h2>
+
+<div class="card-glass" style="max-width:1200px;margin:25px auto;padding:25px;">
+<form id="cloneForm" enctype="multipart/form-data" novalidate>
+
+<h3 class="font-weight-bold" style="margin-bottom:8px;">Configuration</h3>
+
+<div class="wide-grid">
+    <div class="form-group">
+        <label>
+    Source Server
+    <span class="info-container">
+        <span class="info-icon">i</span>
+        <span class="info-tooltip">SQL Server instance where the original user exists.</span>
+    </span>
+</label>
+
+        <input type="text" id="server">
+        <div id="serverError" class="error-tooltip" style="display:none"></div>
+    </div>
+
+    <div class="form-group">
+        <label>
+    Staging Database
+    <span class="info-container">
+        <span class="info-icon">i</span>
+        <span class="info-tooltip">Database used to store temporary staging data during cloning.</span>
+    </span>
+</label>
+
+        <select id="database"></select>
+        <div id="dbError" class="error-tooltip" style="display:none"></div>
+    </div>
+
+    <div class="form-group">
+        <label>
+    Logging Server
+    <span class="info-container">
+        <span class="info-icon">i</span>
+        <span class="info-tooltip">Server where log data is stored. Configured in Settings.</span>
+    </span>
+</label>
+
+        <input type="text" id="logServer" readonly>
+    </div>
+
+    <div class="form-group">
+       <label>
+    Logging Database
+    <span class="info-container">
+        <span class="info-icon">i</span>
+        <span class="info-tooltip">Database used for storing cloned-user logs. Configured in Settings.</span>
+    </span>
+</label>
+
+        <input type="text" id="logDB" readonly>
+    </div>
+</div>
+
+<div class="divider" style="margin:20px 0;"></div>
+
+<h3 class="font-weight-bold">
+    Execution Mode
+    <span class="info-container">
+        <span class="info-icon">i</span>
+        <span class="info-tooltip">Select how you want to run the cloning.</span>
+    </span>
+</h3>
+
+<div style="display:flex;gap:30px;align-items:center;">
+
+    <label>
+        <input type="radio" id="singleRadio" name="mode" value="Single"> Single Login Clone
+        <span class="info-container">
+            <span class="info-icon">i</span>
+            <span class="info-tooltip">Clone single login by specifying source and target names.</span>
+        </span>
+    </label>
+
+    <label>
+        <input type="radio" id="multiRadio" name="mode" value="Multiple"> Bulk Login Clone
+        <span class="info-container">
+            <span class="info-icon">i</span>
+            <span class="info-tooltip">Clone multiple logins from a .txt file.</span>
+        </span>
+    </label>
+
+</div>
+
+
+<div id="singleUserBlock" class="wide-grid d-none" style="margin-top:12px;">
+    <div class="form-group">
+        <label>Source Login</label>
+        <input type="text" id="old_user">
+    </div>
+    <div class="form-group">
+        <label> Target Login</label>
+        <input type="text" id="new_user">
+    </div>
+</div>
+
+<div id="multiUserBlock" class="d-none" style="margin-top:12px;">
+    <label>Text File Path</label>
+    <input type="text" id="user_file_path" placeholder="C:\\path\\to\\clone.txt" style="width:300px;">
+    <div id="fileError" class="error-tooltip" style="display:none"></div>
+</div>
+
+
+<button type="button" id="submitBtn" class="btn-primary btn-small">Execute Clone</button>
+<div style="margin-top:18px;">
+    <div style="font-weight:600;margin-bottom:6px;">Execution Console</div>
+    <div id="output" class="output-pane"></div>
+
+    <div class="progress-wrap">
+        <div class="progress"><div id="progressBar" class="progress-bar"></div></div>
+        <div class="percent-text" id="percentText">0%</div>
+        <div class="duration-text" id="durationText">00:00</div>
+    </div>
+</div>
+
+</form>
+</div>
+
+<div class="card-glass recent-exec-card" style="padding:20px;">
+    <h3 class="font-weight-bold">
+    Recent Executions
+    <span class="info-container">
+        <span class="info-icon">i</span>
+        <span class="info-tooltip">Shows the last five cloning runs.</span>
+    </span>
+</h3>
+
+
+    <table class="recent-table" style="width:100%;border-collapse:collapse;">
+        <thead>
+        <tr>
+            <th>Executed By</th>
+            <th>Start Time</th>
+            <th>End Time</th>
+            <th>Duration</th>
+            <th>Execution Mode</th>
+            <th>Execution Status</th>
+        </tr>
+        </thead>
+        <tbody id="recentExecBody"></tbody>
+    </table>
+</div>
+
+</div> <!-- container -->
+</div> <!-- mainPage -->
+<!-- SETTINGS PANEL -->
+<div id="settingsOverlay">
+    <div class="settings-panel">
+        <div class="settings-header" style="display:flex;justify-content:space-between;">
+            <div class="settings-title">Logging Configuration</div>
+            <button id="closeSettings" class="settings-close">&times;</button>
+        </div>
+
+        <div class="form-group">
+            <label>Logging Server</label>
+            <input type="text" id="setLogServer">
+            <div id="setLogServerError" class="error-tooltip" style="display:none"></div>
+        </div>
+
+        <div class="form-group">
+            <label>Logging Database</label>
+            <input type="text" id="setLogDB">
+            <div id="setLogDBError" class="error-tooltip" style="display:none"></div>
+        </div>
+
+        <div class="settings-footer" style="display:flex;gap:10px;margin-top:20px;position:relative;">
+    <button id="testConn" class="btn-secondary">Test Connection</button>
+
+    <button id="saveSettings" class="btn-primary" disabled>Save</button>
+
+    <span id="saveTooltip" class="info-tooltip save-tooltip">
+        Test connection successfully to enable Save
+    </span>
+</div>
+
+
+        </div>
+    </div>
+</div>
+
+<footer class="footer">
+    <div class="footer-bottom"><p>&copy; User Clone Management ● DataSolveX</p></div>
+</footer>
+
+<script>
+
+/* OPEN LOGS POPUP */
+document.getElementById("logsBtn").onclick = () => {
+    loadLogs().then(()=>{
+        document.getElementById("logsPopup").style.display = "flex";
+    });
+};
+
+/* CLOSE POPUP */
+document.getElementById("closeLogsPopup").onclick = () => {
+    document.getElementById("logsPopup").style.display = "none";
+};
+
+/* BRAND CLOSES POPUP */
+document.querySelector(".app-brand").onclick = () => {
+    document.getElementById("logsPopup").style.display = "none";
+    document.getElementById("mainPage").style.display = "block";
+};
+
+/* SETTINGS PANEL */
+const overlay=document.getElementById("settingsOverlay");
+const settingsBtn=document.getElementById("settingsBtn");
+const closeSettings=document.getElementById("closeSettings");
+const saveSettings=document.getElementById("saveSettings");
+
+saveSettings.disabled = true;
+
+
+
+
+const logServer=document.getElementById("logServer");
+const logDB=document.getElementById("logDB");
+const setLogServer=document.getElementById("setLogServer");
+const setLogDB=document.getElementById("setLogDB");
+
+settingsBtn.onclick=()=>{
+    overlay.style.display="flex";
+    requestAnimationFrame(()=> overlay.style.opacity="1");
+    setLogServer.value=logServer.value;
+    setLogDB.value=logDB.value;
+
+    saveSettings.disabled = true;
+};
+
+
+closeSettings.onclick=()=>{
+    overlay.style.opacity="0";
+    setTimeout(()=> overlay.style.display="none",200);
+};
+
+saveSettings.onclick = async () => {
+    if(saveSettings.disabled) return;
+
+    const server = setLogServer.value.trim();
+    const db = setLogDB.value.trim();
+
+    const res = await fetch("{{ url_for('userclone.save_logging_settings') }}", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({server, database: db})
+    });
+
+    const data = await res.json();
+    if(!data.success){
+        alert("Failed to save logging config");
+        return;
+    }
+
+    logServer.value = server;
+    logDB.value = db;
+    closeSettings.onclick();
+};
+
+
+/* TEST CONNECTION */
+document.getElementById("testConn").onclick=async()=>{
+    const server=setLogServer.value.trim();
+    const database=setLogDB.value.trim();
+
+    const srvErr=document.getElementById("setLogServerError");
+    const dbErr=document.getElementById("setLogDBError");
+
+    srvErr.style.display="none";
+    dbErr.style.display="none";
+
+    if(!server){
+        srvErr.textContent="Logging server required";
+        srvErr.style.display="block";
+        return;
+    }
+    if(!database){
+        dbErr.textContent="Logging database required";
+        dbErr.style.display="block";
+        return;
+    }
+
+    const res=await fetch("{{ url_for('userclone.test_connection') }}",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({server,database})
+    });
+    const data=await res.json();
+    alert((data.success?"SUCCESS:\n":"FAILURE:\n")+data.message);
+
+if(data.success){
+    saveSettings.disabled = false;
+}
+
+};
+
+/* LOAD DB LIST */
+document.getElementById("server").addEventListener("blur", async()=>{
+    const serverVal=document.getElementById("server").value.trim();
+    if(!serverVal) return;
+
+    const res=await fetch("{{ url_for('userclone.get_databases') }}",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({server:serverVal})
+    });
+    const data=await res.json();
+    const dbSelect=document.getElementById("database");
+
+    if(!data.success){
+        document.getElementById("serverError").textContent=data.message;
+        document.getElementById("serverError").style.display="block";
+        dbSelect.innerHTML="";
+        return;
+    }
+
+    dbSelect.innerHTML="";
+    data.databases.forEach(db=>{
+        const opt=document.createElement("option");
+        opt.value=db; opt.textContent=db;
+        dbSelect.appendChild(opt);
+    });
+});
+
+/* DB FILTER ON TYPING */
+document.getElementById("database").addEventListener("keyup", function(){
+    const f=this.value.toLowerCase();
+    [...this.options].forEach(option=>{
+        option.style.display = option.text.toLowerCase().includes(f) ? "" : "none";
+    });
+});
+/* MODE SWITCH */
+document.getElementById("singleRadio").onchange=()=>{
+    document.getElementById("singleUserBlock").classList.remove("d-none");
+    document.getElementById("multiUserBlock").classList.add("d-none");
+};
+document.getElementById("multiRadio").onchange=()=>{
+    document.getElementById("multiUserBlock").classList.remove("d-none");
+    document.getElementById("singleUserBlock").classList.add("d-none");
+};
+
+
+
+
+
+async function loadLoggingDefaults(){
+    const res = await fetch("{{ url_for('userclone.logging_defaults') }}");
+    const data = await res.json();
+    logServer.value = data.server;
+    logDB.value = data.database;
+
+    await loadRecent();
+}
+
+
+window.addEventListener("load", loadLoggingDefaults);
+
+
+/* OUTPUT + PROGRESS */
+const output=document.getElementById("output");
+const progressBar=document.getElementById("progressBar");
+const percentText=document.getElementById("percentText");
+const durationText=document.getElementById("durationText");
+
+// function appendOutput(x, isError=false){
+//     const span=document.createElement("span");
+//     span.className = isError ? "output-line output-error" : "output-line";
+//     span.textContent = x;
+//     output.appendChild(span);
+//     output.appendChild(document.createElement("br"));
+//     output.scrollTop=output.scrollHeight;
+// }
+
+function appendOutput(text, isError = false) {
+    if (text.toLowerCase().includes("error")) {
+        isError = true;
+    }
+
+    const span = document.createElement("span");
+    span.className = isError ? "output-line output-error" : "output-line";
+    span.textContent = text;
+
+    output.appendChild(span);       // FIXED
+    output.appendChild(document.createElement("br"));
+    output.scrollTop = output.scrollHeight; // FIXED
+}
+
+
+
+
+function setProgress(p){
+    progressBar.style.width=p+"%";
+    percentText.textContent=p+"%";
+}
+
+/* SSE CHUNK PARSER */
+function parseSSEChunk(buf){
+    const events=[]; const parts=buf.split("\n\n");
+    for(let i=0;i<parts.length-1;i++){
+        const lines=parts[i].split("\n");
+        let ev={event:null,data:""};
+        for(const L of lines){
+            if(L.startsWith("event:")) ev.event=L.replace("event:","").trim();
+            else if(L.startsWith("data:")) ev.data+=L.replace("data:","").trim();
+        }
+        events.push(ev);
+    }
+    return {events,remainder:parts[parts.length-1]};
+}
+/* SUBMIT */
+document.getElementById("submitBtn").onclick = async ()=>{
+    output.textContent="";
+    setProgress(0);
+    durationText.textContent="00:00";
+    percentText.textContent="0%";
+
+    const serverVal=document.getElementById("server").value.trim();
+    const dbVal=document.getElementById("database").value.trim();
+
+    if(!serverVal){
+        document.getElementById("serverError").textContent="Primary server required";
+        document.getElementById("serverError").style.display="block";
+        return;
+    }
+    if(!dbVal){
+        document.getElementById("dbError").textContent="Primary database required";
+        document.getElementById("dbError").style.display="block";
+        return;
+    }
+
+    const fd=new FormData();
+    fd.append("server",serverVal);
+    fd.append("database",dbVal);
+    fd.append("logging_server",logServer.value);
+    fd.append("logging_database",logDB.value);
+
+    const mode=document.querySelector('input[name="mode"]:checked');
+    
+
+    if(!mode){
+        appendOutput("Mode must be selected");
+        return;
+    }
+
+    fd.append("mode",mode.value);
+  
+
+    if(mode.value==="Single"){
+        const oldu=document.getElementById("old_user").value.trim();
+        const newu=document.getElementById("new_user").value.trim();
+        if(!oldu||!newu){
+            appendOutput("Both old and new users required");
+            return;
+        }
+        fd.append("user_pair", `${oldu},${newu}`);
+    } else {
+        if(mode.value === "Multiple"){
+    const path = document.getElementById("user_file_path").value.trim();
+    if(!path){
+        fileError.textContent = "File path required";
+        fileError.style.display = "block";
+        return;
+    }
+    fd.append("user_file_path", path);
+}
+    }
+
+    const res=await fetch("{{ url_for('userclone.run_script_stream') }}",{method:"POST",body:fd});
+    if(!res.ok){
+        appendOutput("Server error");
+        return;
+    }
+
+    const reader=res.body.getReader();
+    const decoder=new TextDecoder();
+    let buffered="";
+    const start=Date.now();
+
+    while(true){
+        const {done,value}=await reader.read();
+        if(done) break;
+
+        buffered+=decoder.decode(value,{stream:true});
+        const parsed=parseSSEChunk(buffered);
+
+        for(const ev of parsed.events){
+            if (ev.event === "download") {
+    const payload = JSON.parse(ev.data);
+
+    // Construct the download link
+    const a = document.createElement("a");
+    a.href = "data:text/plain;base64," + payload.data;
+    a.download = payload.filename;
+    a.style.display = "none";
+
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    appendOutput("Download ready: " + payload.filename);
+    continue;
+}
+
+            if(ev.event==="output"){
+                appendOutput(ev.data);
+            }
+            if(ev.event==="error"){
+                appendOutput(ev.data, true);
+            }
+
+            if(ev.event==="progress"){
+                try{
+                    const p=JSON.parse(ev.data).percent;
+                    setProgress(p);
+                }catch{}
+            }
+            if(ev.event==="done"){
+                try{
+                    const d=JSON.parse(ev.data);
+                    if(d.duration) durationText.textContent=d.duration+ " secs";
+                    if(d.error) appendOutput("ERROR: "+d.error,true);
+                }catch{}
+            }
+        }
+        buffered=parsed.remainder;
+    }
+
+   
+
+    if(durationText.textContent==="00:00"){
+        const elapsed=Math.floor((Date.now()-start)/1000);
+        durationText.textContent = elapsed + " secs";
+
+    }
+
+    loadRecent();
+    loadLogs();
+};
+/* FORMAT DURATION */
+function formatDuration(sec){
+    if(sec===null||sec===undefined) return "";
+    sec=Number(sec);
+    if(isNaN(sec)) return "";
+
+    const h=Math.floor(sec/3600);
+    const m=Math.floor((sec%3600)/60);
+    const s=sec%60;
+
+    if(h>0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+
+/* LOAD RECENT EXECUTIONS (ONLY 5) */
+async function loadRecent(){
+    const res=await fetch(
+        `{{ url_for('userclone.recent_5') }}?log_server=${encodeURIComponent(logServer.value)}&log_db=${encodeURIComponent(logDB.value)}`
+    );
+    const data=await res.json();
+    const tbody=document.getElementById("recentExecBody");
+    tbody.innerHTML="";
+
+    data.forEach(r=>{
+        const tr=document.createElement("tr");
+        tr.innerHTML=`
+            <td>${r.executed_by}</td>
+            <td>${r.start_time}</td>
+            <td>${r.end_time}</td>
+            <td>${formatDuration(r.duration_seconds)}</td>
+            <td>${r.mode}</td>
+            <td>${r.status}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+
+/* LOAD ALL LOGS (full history) */
+async function loadLogs(){
+    const res=await fetch(
+        `{{ url_for('userclone.all_logs') }}?log_server=${encodeURIComponent(logServer.value)}&log_db=${encodeURIComponent(logDB.value)}`
+    );
+    const data=await res.json();
+    const tbody=document.getElementById("logsBody");
+    tbody.innerHTML="";
+
+    data.forEach(r=>{
+        const tr=document.createElement("tr");
+        tr.innerHTML=`
+            <td>${r.executed_by}</td>
+            <td>${r.start_time}</td>
+            <td>${r.end_time}</td>
+            <td>${formatDuration(r.duration_seconds)}</td>
+            <td>${r.mode}</td>
+            <td>${r.status}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    buildDistinctFilters();
+    applyFilters();
+}
+
+
+/* BUILD DISTINCT VALUE FILTER DROPDOWNS */
+function buildDistinctFilters(){
+    const rows=[...document.querySelectorAll("#logsBody tr")];
+
+    const map = [
+        "filterExecBy",
+        null,
+        null,
+        null,
+        "filterMode",
+        "filterStatus"
+    ];
+
+    for(let col=0; col<6; col++){
+        const id = map[col];
+        if(!id) continue;
+
+        const sel=document.getElementById(id);
+        if(!sel || sel.tagName.toLowerCase()!=="select") continue;
+
+        const set=new Set();
+        rows.forEach(r=>{
+            const v=r.children[col].textContent.trim();
+            if(v) set.add(v);
+        });
+
+        const arr=[...set].sort((a,b)=>a.localeCompare(b,undefined,{sensitivity:"base"}));
+        sel.innerHTML=`<option value="">All</option>` + 
+            arr.map(v=>`<option value="${v.toLowerCase()}">${v}</option>`).join("");
+    }
+}
+
+
+/* TIME FILTER LOGIC */
+function timeMatch(value, f){
+    if(!f) return true;
+
+    const dt=new Date(value);
+    if(isNaN(dt)) return false;
+    const now=new Date();
+    const dayMS=86400000;
+
+    if(f==="24h") return now-dt <= 1*dayMS;
+    if(f==="48h") return now-dt <= 2*dayMS;
+    if(f==="7d")  return now-dt <= 7*dayMS;
+    if(f==="14d") return now-dt <= 14*dayMS;
+    if(f==="30d") return now-dt <= 30*dayMS;
+
+    if(f==="thisweek"){
+        const s=new Date(now);
+        s.setDate(now.getDate()-now.getDay());
+        s.setHours(0,0,0,0);
+        return dt >= s;
+    }
+    if(f==="thismonth"){
+        const s=new Date(now.getFullYear(), now.getMonth(), 1);
+        return dt >= s;
+    }
+    if(f==="thisyear"){
+        const s=new Date(now.getFullYear(),0,1);
+        return dt >= s;
+    }
+    return true;
+}
+/* APPLY FILTERS */
+function applyFilters(){
+    const fExec = document.getElementById("filterExecBy").value.toLowerCase();
+    const fStartQuick = document.getElementById("filterStart").value;
+    const fMode  = document.getElementById("filterMode").value.toLowerCase();
+    const fStat  = document.getElementById("filterStatus").value.toLowerCase();
+
+    const startDateVal = document.getElementById("startDate").value;
+    const endDateVal   = document.getElementById("endDate").value;
+
+    [...document.querySelectorAll("#logsBody tr")].forEach(row=>{
+        const c=[...row.children].map(td=>td.textContent.trim().toLowerCase());
+
+        const okExec = !fExec || c[0].includes(fExec);
+
+        const okStartQuick = timeMatch(row.children[1].textContent, fStartQuick);
+
+        let okStartCustom = true;
+        if(startDateVal || endDateVal){
+            const dt = new Date(row.children[1].textContent);
+            if(isNaN(dt)){
+                okStartCustom = false;
+            } else {
+                if(startDateVal){
+                    const sdt = new Date(startDateVal + "T00:00:00");
+                    if(dt < sdt) okStartCustom = false;
+                }
+                if(endDateVal){
+                    const edt = new Date(endDateVal + "T23:59:59");
+                    if(dt > edt) okStartCustom = false;
+                }
+            }
+        }
+
+        const okStart = okStartQuick && okStartCustom;
+        const okMode  = !fMode || c[4].includes(fMode);
+        const okStatus= !fStat || c[5].includes(fStat);
+
+        row.style.display = (okExec && okStart && okMode && okStatus) ? "" : "none";
+    });
+}
+
+
+/* FILTER EVENTS */
+document.getElementById("filterExecBy").addEventListener("change", applyFilters);
+document.getElementById("filterStart").addEventListener("change", applyFilters);
+document.getElementById("filterMode").addEventListener("change", applyFilters);
+document.getElementById("filterStatus").addEventListener("change", applyFilters);
+
+
+/* START TIME CUSTOM DATE FILTER ICON + PANEL */
+const startTimeFilterIcon = document.getElementById("startTimeFilterIcon");
+const startTimeFilterPanel = document.getElementById("startTimeFilterPanel");
+const startDateInput = document.getElementById("startDate");
+const endDateInput = document.getElementById("endDate");
+const applyStartDateFilterBtn = document.getElementById("applyStartDateFilter");
+const clearStartDateFilterBtn = document.getElementById("clearStartDateFilter");
+
+startTimeFilterIcon.onclick = (e)=>{
+    const rect = e.target.getBoundingClientRect();
+    startTimeFilterPanel.style.left = (rect.right + 4) + "px";
+    startTimeFilterPanel.style.top  = (rect.bottom + 4) + "px";
+    startTimeFilterPanel.style.display = 
+        startTimeFilterPanel.style.display === "block" ? "none" : "block";
+};
+
+applyStartDateFilterBtn.onclick = ()=>{
+    startTimeFilterPanel.style.display = "none";
+    applyFilters();
+};
+
+clearStartDateFilterBtn.onclick = ()=>{
+    startDateInput.value = "";
+    endDateInput.value = "";
+    startTimeFilterPanel.style.display = "none";
+    applyFilters();
+};
+
+document.addEventListener("click", (e)=>{
+    if(!startTimeFilterPanel.contains(e.target) && e.target !== startTimeFilterIcon){
+        startTimeFilterPanel.style.display = "none";
+    }
+});
+
+</script>
+
+</body>
+</html>
