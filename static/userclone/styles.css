@@ -1664,3 +1664,117 @@ button:disabled {
   color: #ffffff !important;
   background:rgba(255,255,255,0.14);
 }
+
+
+.status-cell {
+    pointer-events: auto !important;
+}
+.recent-table tr,
+.recent-table td {
+    pointer-events: auto !important;
+}
+
+
+.error-preview {
+    max-width: 420px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #7f1d1d;
+    font-size: 12px;
+}
+.status-failed {
+    color: #d00000;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.eye-icon {
+    cursor: pointer;
+    font-size: 15px;
+    color: #d00000;
+}
+
+
+
+/* ERROR MODAL */
+#errorModal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: none;
+    z-index: 9000;
+
+    display: flex;              /* ✅ */
+    justify-content: center;
+    align-items: center;
+}
+
+#errorModalContent {
+    background: #fff;
+    width: 70%;
+    max-width: 900px;
+    max-height: 70vh;
+    border-radius: 8px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+}
+
+#errorModalHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+/* ERROR MODAL – white body, red error text */
+#errorModalBody {
+    background: #ffffff;              /* white */
+    color: #b91c1c;                   /* red text */
+    border: 1px solid #fecaca;        /* light red border */
+    padding: 14px;
+    border-radius: 6px;
+
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: pre-wrap;
+    overflow: auto;
+}
+
+#errorModalHeader {
+    color: #b91c1c;
+}
+
+#errorModalClose {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+}
+
+/* #logsPopup {
+    display: none !important;
+} */
+
+
+#errorModal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    display: none;                 /* ← THIS IS THE FIX */
+    z-index: 9000;
+
+    justify-content: center;
+    align-items: center;
+}
+window.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("logsPopup").style.display = "none";
+    document.getElementById("errorModal").style.display = "none";
+});
+
+

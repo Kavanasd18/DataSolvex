@@ -717,11 +717,18 @@ def get_db_metadata(server_id: int, database_name: str):
     from datetime import datetime
 
     rpo_minutes = None
-    last_log = db_meta.get("last_log_backup")
-    if last_log and isinstance(last_log, datetime):
+    # Prefer last log backup; if missing, fall back to differential, then full
+    last_backup = None
+    for key in ("last_log_backup", "last_diff_backup", "last_full_backup"):
+        candidate = db_meta.get(key)
+        if candidate and isinstance(candidate, datetime):
+            last_backup = candidate
+            break
+
+    if last_backup and isinstance(last_backup, datetime):
         # If the datetime is naive, treat it as server local; otherwise respect tzinfo
-        now = datetime.now(tz=last_log.tzinfo) if last_log.tzinfo else datetime.now()
-        delta = now - last_log
+        now = datetime.now(tz=last_backup.tzinfo) if getattr(last_backup, 'tzinfo', None) else datetime.now()
+        delta = now - last_backup
         rpo_minutes = max(0, int(delta.total_seconds() / 60))
 
     db_meta["rpo_minutes"] = rpo_minutes
@@ -832,3 +839,199 @@ def get_db_object_summary(database_name: str, server_name: str | None = None):
     finally:
         if conn is not None:
             conn.close()
+
+
+def get_query_store_info(server_name: str, database_name: str) -> dict:
+    """Return Query Store state for the given database on the target server.
+
+    Returns keys:
+      - state: actual_state_desc (e.g. 'ON'/'OFF') or None
+      - desired_state: desired_state_desc
+      - capture_mode: query_capture_mode_desc (e.g. 'ALL', 'AUTO', 'NONE')
+    """
+    if INV_DB_TRUSTED:
+        conn_str = (
+            "DRIVER={ODBC Driver 17 for SQL Server};"
+            f"SERVER={server_name or INV_DB_SERVER};"
+            f"DATABASE={database_name};"
+            "Trusted_Connection=yes;"
+        )
+    else:
+        if not INV_DB_USER or not INV_DB_PASSWORD:
+            raise RuntimeError("Using SQL auth but INV_DB_USER / INV_DB_PASSWORD not set")
+        conn_str = (
+            "DRIVER={ODBC Driver 17 for SQL Server};"
+            f"SERVER={server_name or INV_DB_SERVER};"
+            f"DATABASE={database_name};"
+            f"UID={INV_DB_USER};"
+            f"PWD={INV_DB_PASSWORD};"
+        )
+
+    try:
+        conn = pyodbc.connect(conn_str)
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                """
+                SELECT
+                    actual_state_desc,
+                    desired_state_desc,
+                    query_capture_mode_desc
+                FROM sys.database_query_store_options;
+                """
+            )
+            r = cur.fetchone()
+            if not r:
+                return {"state": None, "desired_state": None, "capture_mode": None}
+            return {
+                "state": getattr(r, 'actual_state_desc', None),
+                "desired_state": getattr(r, 'desired_state_desc', None),
+                "capture_mode": getattr(r, 'query_capture_mode_desc', None),
+            }
+        except Exception:
+            return {"state": None, "desired_state": None, "capture_mode": None}
+        finally:
+            conn.close()
+    except Exception:
+        return {"state": None, "desired_state": None, "capture_mode": None}
+
+
+def get_last_backup_sizes(server_name: str, database_name: str) -> dict:
+    """Return the most recent full, differential and log backup sizes for the given database.
+
+    Returns a dict with keys 'full', 'diff', 'log' each mapping to a dict:
+      { 'finished_at': datetime or None, 'size_bytes': int or None, 'size_mb': float or None }
+    """
+    result = {
+        'full': {'finished_at': None, 'size_bytes': None, 'size_mb': None},
+        'diff': {'finished_at': None, 'size_bytes': None, 'size_mb': None},
+        'log':  {'finished_at': None, 'size_bytes': None, 'size_mb': None},
+    }
+
+    # Connect to msdb on the target server to read backup history
+    try:
+        if INV_DB_TRUSTED:
+            conn_str = (
+                "DRIVER={ODBC Driver 17 for SQL Server};"
+                f"SERVER={server_name or INV_DB_SERVER};"
+                "DATABASE=msdb;"
+                "Trusted_Connection=yes;"
+            )
+        else:
+            if not INV_DB_USER or not INV_DB_PASSWORD:
+                raise RuntimeError("Using SQL auth but INV_DB_USER / INV_DB_PASSWORD not set")
+            conn_str = (
+                "DRIVER={ODBC Driver 17 for SQL Server};"
+                f"SERVER={server_name or INV_DB_SERVER};"
+                "DATABASE=msdb;"
+                f"UID={INV_DB_USER};"
+                f"PWD={INV_DB_PASSWORD};"
+            )
+
+        conn = pyodbc.connect(conn_str)
+        cur = conn.cursor()
+
+        for typ, code in (('full','D'), ('diff','I'), ('log','L')):
+            try:
+                cur.execute(
+                    """
+                    SELECT TOP (1) backup_finish_date, backup_size
+                    FROM msdb.dbo.backupset
+                    WHERE database_name = ?
+                      AND type = ?
+                    ORDER BY backup_finish_date DESC;
+                    """,
+                    (database_name, code),
+                )
+                r = cur.fetchone()
+                if r and getattr(r, 'backup_finish_date', None):
+                    size_bytes = getattr(r, 'backup_size', None) or 0
+                    size_mb = float(size_bytes) / 1024.0 / 1024.0
+                    result_key = 'full' if typ == 'full' else ('diff' if typ == 'diff' else 'log')
+                    result[result_key] = {
+                        'finished_at': r.backup_finish_date,
+                        'size_bytes': int(size_bytes) if size_bytes is not None else None,
+                        'size_mb': round(size_mb, 2),
+                    }
+            except Exception:
+                # ignore and leave as None
+                pass
+
+        conn.close()
+    except Exception:
+        # Best-effort: if we cannot query msdb, return the default None values
+        return result
+
+    return result
+
+
+def get_ag_info(server_name: str, database_name: str) -> dict:
+    """Return AG-related info for the given database on the target server.
+
+    Returns a dict with:
+      - is_in_ag: bool
+      - ag_name: str | None
+      - availability_mode: str | None  -- e.g. 'SYNCHRONOUS_COMMIT' or 'ASYNCHRONOUS_COMMIT'
+      - sync_state: str | None         -- e.g. 'SYNCHRONIZED'
+    """
+    info = {
+        'is_in_ag': False,
+        'ag_name': None,
+        'availability_mode': None,
+        'sync_state': None,
+    }
+
+    try:
+        if INV_DB_TRUSTED:
+            conn_str = (
+                "DRIVER={ODBC Driver 17 for SQL Server};"
+                f"SERVER={server_name or INV_DB_SERVER};"
+                f"DATABASE=master;"
+                "Trusted_Connection=yes;"
+            )
+        else:
+            if not INV_DB_USER or not INV_DB_PASSWORD:
+                raise RuntimeError("Using SQL auth but INV_DB_USER / INV_DB_PASSWORD not set")
+            conn_str = (
+                "DRIVER={ODBC Driver 17 for SQL Server};"
+                f"SERVER={server_name or INV_DB_SERVER};"
+                f"DATABASE=master;"
+                f"UID={INV_DB_USER};"
+                f"PWD={INV_DB_PASSWORD};"
+            )
+
+        conn = pyodbc.connect(conn_str)
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                """
+                SELECT
+                    ag.name AS ag_name,
+                    drs.synchronization_state_desc AS sync_state,
+                    rr.availability_mode_desc AS availability_mode
+                FROM sys.databases d
+                INNER JOIN sys.dm_hadr_database_replica_states drs
+                    ON d.database_id = drs.database_id
+                INNER JOIN sys.availability_groups ag
+                    ON drs.group_id = ag.group_id
+                INNER JOIN sys.availability_replicas rr
+                    ON ag.group_id = rr.group_id AND drs.replica_id = rr.replica_id
+                WHERE d.name = ?;
+                """,
+                (database_name,),
+            )
+            r = cur.fetchone()
+            if r:
+                info['is_in_ag'] = True
+                info['ag_name'] = getattr(r, 'ag_name', None)
+                info['availability_mode'] = getattr(r, 'availability_mode', None)
+                info['sync_state'] = getattr(r, 'sync_state', None)
+        except Exception:
+            pass
+        finally:
+            conn.close()
+    except Exception:
+        # best-effort: return defaults
+        return info
+
+    return info

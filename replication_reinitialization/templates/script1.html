@@ -3,15 +3,27 @@
 
 <head>
   <meta charset="UTF-8" />
-  <title>Replication Drop & Script (Script 1)</title>
+  <title>Replication Drop </title>
 
   <link rel="stylesheet" href="{{url_for('replication.static',filename='global.css')}}" />
   <link rel="stylesheet" href="{{url_for('replication.static',filename='reinit.css')}}" />
 
   <style>
+    a.status-click,
+    a.status-click:visited,
+    a.status-click:hover,
+    a.status-click:active {
+      text-decoration: none !important;
+    }
+
     .card-simple {
       padding: 18px;
     }
+
+    #logs-modal {
+      display: none;
+    }
+
 
     .mt-4 {
       margin-top: 18px;
@@ -169,8 +181,8 @@
         </ul>
 
         <div class="breadcrumb-actions">
-          <a href="{{ url_for('replication.script1') }}" class="app-nav-link breadcrumb-link">Script1</a>
-          <a href="{{ url_for('replication.script2') }}" class="app-nav-link breadcrumb-link">Script2</a>
+          <a href="{{ url_for('replication.script1') }}" class="app-nav-link breadcrumb-link">Replication Drop</a>
+          <a href="{{ url_for('replication.script2') }}" class="app-nav-link breadcrumb-link">Replication Reinit</a>
           <a href="#" id="open-logs" class="app-nav-link breadcrumb-link">logs</a>
         </div>
       </div>
@@ -181,7 +193,7 @@
     <main class="page-content">
       <div class="container-sm">
         <header class="page-header">
-          <h1 class="page-title">Replication Drop & Script (Script 1)</h1>
+          <h1 class="page-title">Replication Drop </h1>
         </header>
 
         <section class="card-simple">
@@ -277,12 +289,13 @@
                     <th class="col-small">User</th>
                     <th class="col-medium">Reinit Instance</th>
                     <th class="col-medium">Publication Reinitialized</th>
+                    <th class="col-medium">Status</th>
                   </tr>
                 </thead>
 
                 <tbody id="recent-tbody">
                   <tr>
-                    <td colspan="7" class="text-center text-gray">Fill log inputs and click Refresh…</td>
+                    <td colspan="6" class="text-center text-gray">Fill log inputs and click Refresh…</td>
                   </tr>
                 </tbody>
               </table>
@@ -315,7 +328,7 @@
 
     async function loadRecentFromReplLog() {
       const tbody = document.getElementById("recent-tbody");
-      tbody.innerHTML = `<tr><td colspan="7" class="text-center text-gray">Loading…</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-gray">Loading…</td></tr>`;
 
       try {
         const li = document.getElementById("LogInstance")?.value?.trim() || "";
@@ -347,17 +360,35 @@
           return;
         }
 
-        tbody.innerHTML = data.map(r => `
-          <tr>
-            <td>${esc(r.dropped_on || "NA")}</td>
-            <td>${esc(r.table_name || "NA")}</td>
-            <td>${esc(r.publication_dropped || "NA")}</td>
-            <td>${esc(r.instance_name || "NA")}</td>
-            <td>${esc(r.user || "NA")}</td>
-            <td>${esc(r.reinitialized_instance_name || "NA")}</td>
-            <td>${esc(r.publication_reinitialized || "NA")}</td>
-          </tr>
-        `).join("");
+        tbody.innerHTML = data.map(r => {
+          const status = String(r.status || "NA").toUpperCase().trim();
+          const err = String(r.error_message || "").trim();
+
+          const statusCell = (status === "FAILED")
+            ? `
+              <a href="#"
+                class="status-click"
+                data-error="${esc(err || "No error message captured.")}"
+                style="color:#d00000;cursor:pointer;font-weight: 600;">
+                Failed 👁
+              </a>
+            `
+            : esc(status || "NA");
+
+          return `
+            <tr>
+              <td>${esc(r.dropped_on || "NA")}</td>
+              <td>${esc(r.table_name || "NA")}</td>
+              <td>${esc(r.publication_dropped || "NA")}</td>
+              <td>${esc(r.instance_name || "NA")}</td>
+              <td>${esc(r.user || "NA")}</td>
+              <td>${esc(r.reinitialized_instance_name || "NA")}</td>
+              <td>${esc(r.publication_reinitialized || "NA")}</td>
+              <td>${statusCell}</td>
+            </tr>
+          `;
+        }).join("");
+
       } catch (e) {
         tbody.innerHTML = `<tr><td colspan="7" class="text-center text-gray">Failed to load recent executions.</td></tr>`;
       }
@@ -677,25 +708,47 @@
       cols = cols || [];
       rows = rows || [];
 
-      // ✅ remove ERROR_MESSAGE only from reinit_log
-      if (tableKey === "reinit") {
-        const dropIdx = cols.findIndex(c => String(c).toLowerCase() === "error_message");
-        if (dropIdx !== -1) {
-          cols = cols.filter((_, i) => i !== dropIdx);
-          rows = rows.map(r => (r || []).filter((_, i) => i !== dropIdx));
-        }
-      }
+      // Find indexes (case-insensitive)
+      const errIdx = cols.findIndex(c => String(c).toLowerCase() === "error_message");
+      const statusIdx = cols.findIndex(c => String(c).toLowerCase().includes("status"));
 
-      buildHeaderAndFilters(thead, cols, tableKey);
+      // Build a DISPLAY column set: hide error_message column from table UI
+      const displayCols = (errIdx === -1) ? cols : cols.filter((_, i) => i !== errIdx);
+
+      buildHeaderAndFilters(thead, displayCols, tableKey);
 
       if (!rows.length) {
-        tbody.innerHTML = `<tr><td colspan="${Math.max(1, cols.length)}" class="text-center text-gray">No rows</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${Math.max(1, displayCols.length)}" class="text-center text-gray">No rows</td></tr>`;
       } else {
         tbody.innerHTML = rows.map(rw => {
-          const cells = (rw || []).map((v, i) => {
-            const cname = cols[i] ? String(cols[i]).toUpperCase() : "";
-            return `<td data-colname="${esc(cname)}">${esc(v)}</td>`;
+          rw = rw || [];
+          const errMsg = (errIdx !== -1) ? (rw[errIdx] ?? "") : "";
+
+          // Build cells but skip error_message col
+          const cells = displayCols.map((colName) => {
+            const realIdx = cols.indexOf(colName); // map back to original index
+            const v = rw[realIdx];
+
+            // Status column: make FAILED clickable
+            if (statusIdx !== -1 && realIdx === statusIdx) {
+              const st = String(v ?? "").toUpperCase().trim();
+
+              if (st === "FAILED") {
+                return `
+                  <td data-colname="${esc(String(colName).toUpperCase())}">
+                    <a href="#" class="status-click" data-error="${esc(errMsg)}"
+                      style="color: #d00000; cursor: pointer;font-weight: 600;">
+                      Failed 👁
+                    </a>
+                  </td>`;
+              }
+
+              // SUCCESS or anything else = plain text
+              return `<td data-colname="${esc(String(colName).toUpperCase())}">${esc(st || v)}</td>`;
+            }
+            return `<td data-colname="${esc(String(colName).toUpperCase())}">${esc(v)}</td>`;
           }).join("");
+
           return `<tr>${cells}</tr>`;
         }).join("");
       }
@@ -703,6 +756,7 @@
       attachFilters(tableEl);
       fillStatusDropdown(tableEl);
     }
+
 
 
     document.addEventListener("DOMContentLoaded", () => {
@@ -933,10 +987,11 @@
 
           const logsBase = "{{ url_for('replication.api_logs_data') }}";
 
-          const r = `${logsBase}?${qp}`;
+          // qp is either "" or starts with "?"
+          const url = `${logsBase}${qp}`;
 
-
-          const data = await r.json();
+          const resp = await fetch(url, { cache: "no-store" });
+          const data = await resp.json();
 
           document.getElementById('logs-db-label').textContent = `${data.log_instance || 'NA'} / ${data.log_database || 'NA'}`;
 
@@ -986,6 +1041,43 @@
 
       loadRecentFromReplLog();
     });
+
+    function openErrorModal(msg) {
+      document.getElementById("error-text").textContent = msg || "No error message captured.";
+      document.getElementById("error-modal").style.display = "flex";
+    }
+    function closeErrorModal() {
+      document.getElementById("error-modal").style.display = "none";
+    }
+
+    document.addEventListener("click", (e) => {
+      const a = e.target.closest(".status-click");
+      if (!a) return;
+      e.preventDefault();
+      openErrorModal(a.getAttribute("data-error") || "");
+    });
+
+    document.addEventListener("click", (e) => {
+      if (e.target && e.target.id === "error-close") {
+        e.preventDefault();
+        closeErrorModal();
+      }
+    });
+
+    // 3) Click outside the white box closes too (optional)
+    document.addEventListener("click", (e) => {
+      if (e.target && e.target.id === "error-modal") closeErrorModal();
+    });
+
+    // 4) ESC closes too (optional)
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeErrorModal();
+    });
+    document.getElementById("error-close")?.addEventListener("click", closeErrorModal);
+    document.getElementById("error-modal")?.addEventListener("click", (e) => {
+      if (e.target && e.target.id === "error-modal") closeErrorModal();
+    });
+
   </script>
 
   <!-- Logs Modal (popup) -->
@@ -1027,6 +1119,30 @@
       </div>
     </div>
   </div>
+
+  <!-- Error Popup Modal -->
+  <!-- Error Popup Modal -->
+  <div id="error-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:99999;
+     align-items:center; justify-content:center;">
+    <div style="background:#ffffff; color:#000000; width:min(760px, 92vw); border-radius:12px; padding:16px;
+       box-shadow:0 10px 30px rgba(0,0,0,.35);">
+
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+        <div style="font-weight:800; font-size:18px; color:#d00000;">Error Details</div>
+
+        <!-- IMPORTANT: correct id -->
+        <button type="button" id="error-close"
+          style="padding:8px 12px; border-radius:10px; border:1px solid #ccc; background:#f3f3f3; cursor:pointer;">
+          X
+        </button>
+      </div>
+
+      <pre id="error-text" style="margin-top:12px; white-space:pre-wrap; background:#ffffff; color:#000000;
+             border:1px solid #ddd; border-radius:10px; padding:12px; max-height:55vh; overflow:auto;"></pre>
+    </div>
+  </div>
+
+
 
 </body>
 

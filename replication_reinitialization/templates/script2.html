@@ -1,50 +1,72 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
- 
+
 <head>
   <meta charset="UTF-8" />
-  <title>Replication Reinitialization - Script2</title>
- 
+  <title>Replication Reinitialization</title>
+
   <link rel="stylesheet" href="{{url_for('replication.static',filename='global.css')}}" />
   <link rel="stylesheet" href="{{url_for('replication.static',filename='reinit.css')}}" />
- 
+
   <style>
+    a.status-click,
+    a.status-click:visited,
+    a.status-click:hover,
+    a.status-click:active {
+      text-decoration: none !important;
+    }
+
+    .eye-icon {
+      cursor: pointer;
+      font-size: 15px;
+      color: #d00000;
+    }
+
+    .eye-icon:hover {
+      color: #475569;
+    }
+
     .card-simple {
       padding: 18px;
     }
- 
+
+    #logs-modal {
+      display: none;
+    }
+
+
     .mt-4 {
       margin-top: 18px;
     }
- 
+
     .mt-2 {
       margin-top: 10px;
     }
- 
+
     .form-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 14px 16px;
       margin-top: 6px;
     }
- 
+
     .form-grid .form-group {
       margin: 0;
     }
- 
+
     @media (max-width: 860px) {
       .form-grid {
         grid-template-columns: 1fr;
       }
     }
- 
+
     .form-group label {
       display: block;
       font-weight: 600;
       margin-bottom: 6px;
       opacity: 0.92;
     }
- 
+
     .form-group input {
       width: 100%;
       padding: 10px 12px;
@@ -52,27 +74,27 @@
       border: 1px solid rgba(0, 0, 0, 0.12);
       outline: none;
     }
- 
+
     .form-group input:focus {
       border-color: rgba(0, 0, 0, 0.22);
       box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.06);
     }
- 
+
     .form-group input[readonly] {
       background: rgba(0, 0, 0, 0.04);
       cursor: not-allowed;
     }
- 
+
     .form-actions {
       margin-top: 14px;
     }
- 
+
     .btn-primary.btn-block {
       width: 100%;
       padding: 12px 14px;
       border-radius: 12px;
     }
- 
+
     .run-progress {
       margin-top: 14px;
       padding: 12px;
@@ -80,28 +102,28 @@
       border: 1px solid rgba(0, 0, 0, 0.10);
       background: rgba(255, 255, 255, 0.65);
     }
- 
+
     .run-progress-header {
       display: flex;
       justify-content: space-between;
       align-items: baseline;
       gap: 10px;
     }
- 
+
     .progress.progress-lg {
       height: 10px;
       border-radius: 999px;
       overflow: hidden;
     }
- 
+
     .progress-bar {
       border-radius: 999px;
     }
- 
+
     .console-wrap {
       margin-top: 14px;
     }
- 
+
     .console-title {
       display: flex;
       justify-content: space-between;
@@ -109,16 +131,16 @@
       gap: 12px;
       margin-bottom: 8px;
     }
- 
+
     .console-title label {
       margin: 0;
     }
- 
+
     .console-hint {
       opacity: 0.7;
       font-size: 0.92rem;
     }
- 
+
     #exec-console {
       width: 100%;
       min-height: 180px;
@@ -132,32 +154,85 @@
       font-size: 12.5px;
       line-height: 1.45;
     }
- 
+
     .table-wrap {
       width: 100%;
       overflow-x: auto;
     }
- 
+
     .table-wrap table {
       width: 100%;
       min-width: 900px;
       border-collapse: collapse;
     }
- 
+
     .alert {
       margin-top: 12px;
     }
- 
+
     .alert:first-child {
       margin-top: 0;
     }
- 
+
     .d-none {
       display: none !important;
     }
+
+    .status-success {
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #163;
+      color: #bff;
+    }
+
+    .status-failed {
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #511;
+      color: #ffd;
+      text-decoration: none;
+    }
+
+    .status-failed:hover {
+      opacity: 0.85;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .modal-box {
+      width: min(760px, 92vw);
+      background: #0f172a;
+      color: #e5e7eb;
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .modal-pre {
+      white-space: pre-wrap;
+      margin-top: 12px;
+      background: #0b1220;
+      padding: 12px;
+      border-radius: 10px;
+    }
   </style>
 </head>
- 
+
 <body class="replication-summary-page">
   <header class="app-header">
     <div class="app-nav">
@@ -166,7 +241,7 @@
         <ul class="app-nav-menu"></ul>
       </div>
     </div>
- 
+
     <div class="app-breadcrumb">
       <div class="app-breadcrumb-container">
         <ul class="breadcrumb-list">
@@ -174,68 +249,68 @@
           <li class="breadcrumb-item"><a href="{{ url_for('replication.home') }}">home</a></li>
           <li class="breadcrumb-item active">Replication Reinit</li>
         </ul>
- 
+
         <div class="breadcrumb-actions">
-          <a href="{{ url_for('replication.script1') }}" class="app-nav-link breadcrumb-link">Script1</a>
-          <a href="{{ url_for('replication.script2') }}" class="app-nav-link breadcrumb-link">Script2</a>
+          <a href="{{ url_for('replication.script1') }}" class="app-nav-link breadcrumb-link">Replication Drop </a>
+          <a href="{{ url_for('replication.script2') }}" class="app-nav-link breadcrumb-link">Replication Reinit</a>
           <a href="#" id="open-logs" class="app-nav-link breadcrumb-link">logs</a>
         </div>
       </div>
     </div>
   </header>
- 
+
   <div class="page-wrapper">
     <main class="page-content">
       <div class="container-sm">
         <header class="page-header">
-          <h1 class="page-title">Replication Reinitialization (Script 2)</h1>
+          <h1 class="page-title">Replication Reinitialization </h1>
         </header>
- 
+
         <section class="card-simple">
           <form id="script2-form">
             <div class="form-grid">
- 
+
               <div class="form-group">
                 <label for="InstanceName">SQL Instance (Subscriber)</label>
                 <input type="text" id="InstanceName" name="InstanceName" placeholder="e.g. ISCLSDBT07\\INST7"
                   required />
               </div>
- 
+
               <div class="form-group">
                 <label for="DatabaseName">Database Name</label>
                 <input type="text" id="DatabaseName" name="DatabaseName" placeholder="e.g. DBA" required />
               </div>
- 
+
               <div class="form-group" style="grid-column: 1 / -1;">
                 <label for="SqlFilePath">SQL File Path (auto from path.txt)</label>
-                <input type="text" id="SqlFilePath" name="SqlFilePath" readonly />
+                <input type="text" id="SqlFilePath" name="SqlFilePath" />
               </div>
- 
+
               <div class="form-group" style="grid-column: 1 / -1;">
                 <label for="PublicationName">Publication Name (auto from publication.txt)</label>
-                <input type="text" id="PublicationName" name="PublicationName" readonly />
+                <input type="text" id="PublicationName" name="PublicationName" />
               </div>
- 
+
               <div class="form-group">
                 <label for="ReinitLogInstance">Log Instance</label>
                 <input type="text" id="ReinitLogInstance" name="ReinitLogInstance" placeholder="e.g. ISCLSLOG01\\INST1"
                   required />
               </div>
- 
+
               <div class="form-group">
                 <label for="ReinitLogDatabase">Log Database</label>
                 <input type="text" id="ReinitLogDatabase" name="ReinitLogDatabase" placeholder="e.g. DBA_Logs"
                   required />
               </div>
- 
+
               <div class="form-group" style="grid-column: 1 / -1;">
                 <label for="ReinitLogTable">Log Table</label>
                 <input type="text" id="ReinitLogTable" name="ReinitLogTable" placeholder="e.g. Reinit_Log" required />
               </div>
 
- 
+
             </div>
- 
+
             <div id="run-progress" class="run-progress d-none">
               <div class="run-progress-header">
                 <span class="font-weight-semibold">Execution</span>
@@ -245,12 +320,12 @@
                 <div id="run-progress-bar" class="progress-bar" style="width: 0%"></div>
               </div>
             </div>
- 
+
             <div class="form-actions">
               <button id="run-btn" type="submit" class="btn-primary btn-block">Run Reinitialization</button>
             </div>
           </form>
- 
+
           <div class="console-wrap">
             <div class="console-title">
               <label class="font-weight-semibold">Live Output</label>
@@ -259,13 +334,13 @@
             <textarea id="exec-console" readonly placeholder="PowerShell output will stream here live…"></textarea>
           </div>
         </section>
- 
+
         <section class="card-simple mt-4">
           <div class="console-title">
             <label class="font-weight-semibold">Last 5 executions (Reinit Log)</label>
             <button id="recent-refresh-btn" type="button" class="btn-secondary">Refresh</button>
           </div>
- 
+
           <div class="table-wrap">
             <table class="table table-compact">
               <thead>
@@ -284,50 +359,50 @@
             </table>
           </div>
         </section>
- 
+
       </div>
     </main>
- 
+
     <footer class="footer">
       <div class="footer-content">
         <div class="footer-bottom">Replication Control · DataSolveX</div>
       </div>
     </footer>
   </div>
- 
+
   <script>
     function esc(s) {
       return String(s ?? "").replace(/[&<>"']/g, (c) => ({
         "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
       }[c]));
     }
- 
+
     function pad2(n) { return String(n).padStart(2, "0"); }
     function fmtTime(sec) {
       sec = Math.max(0, parseInt(sec || 0, 10));
       return `${pad2(Math.floor(sec / 60))}:${pad2(sec % 60)}`;
     }
- 
+
     async function loadAutoFill() {
       const r = await fetch("{{ url_for('replication.api_script1_latest') }}", { cache: "no-store" });
       const data = await r.json();
- 
+
       document.getElementById("SqlFilePath").value = data.sql_file_path || "";
       document.getElementById("PublicationName").value = data.publication_name || "";
- 
-      
+
+
     }
- 
+
     async function loadRecent() {
       const tbody = document.getElementById("recent-tbody");
       const li = document.getElementById("ReinitLogInstance").value.trim();
       const ld = document.getElementById("ReinitLogDatabase").value.trim();
       const lt = document.getElementById("ReinitLogTable").value.trim();
- 
+
       const qp = (!li || !ld || !lt)
         ? `limit=5`
         : `log_instance=${encodeURIComponent(li)}&log_database=${encodeURIComponent(ld)}&log_table=${encodeURIComponent(lt)}&limit=5`;
- 
+
       tbody.innerHTML = `<tr><td colspan="4" class="text-center text-gray">Loading…</td></tr>`;
       try {
         const resp = await fetch(`{{ url_for('replication.api_reinit_log_recent') }}?${qp}`, { cache: "no-store" });
@@ -337,8 +412,14 @@
           return;
         }
         tbody.innerHTML = rows.map(r => {
-          const st = (r.status || "").toUpperCase();
-          const badge = st === "SUCCESS" ? "SUCCESS" : st === "FAILED" ? "FAILED" : esc(st);
+          const st = String(r.status || "").toUpperCase().trim();
+          const err = r.error_message || "";
+
+          const badge = (st === "FAILED")
+            ? `<a href="#" class="status-click" data-error="${esc(err)}"
+       style="color:#d00000; cursor:pointer;font-weight: 600; ">Failed 👁</a>`
+            : esc(st || "NA");
+
           return `
             <tr>
               <td>${esc(r.initiated_time || "NA")}</td>
@@ -352,13 +433,13 @@
         tbody.innerHTML = `<tr><td colspan="4" class="text-center text-gray">Failed to load recent</td></tr>`;
       }
     }
- 
+
     /* ----------------------------
        Logs Filters - helpers
     ----------------------------- */
     function isDateLikeColumn(colName) {
       const c = (colName || "").toLowerCase();
- 
+
       // catch your real column names
       return (
         c.includes("time") ||
@@ -371,12 +452,12 @@
         c.endsWith("_at")
       );
     }
- 
+
     function isStatusLikeColumn(colName) {
       const c = (colName || "").toLowerCase();
       return c.includes("status");
     }
- 
+
     function buildHeaderAndFilters(theadEl, cols, tableKey) {
       const header = document.createElement("tr");
       cols.forEach(c => {
@@ -384,13 +465,13 @@
         th.textContent = c;
         header.appendChild(th);
       });
- 
+
       const filters = document.createElement("tr");
       filters.className = "filters-row-ui";
- 
+
       cols.forEach((c, idx) => {
         const th = document.createElement("th");
- 
+
         if (isDateLikeColumn(c)) {
           th.innerHTML = `
             <div class="date-filter">
@@ -423,7 +504,7 @@
           filters.appendChild(th);
           return;
         }
- 
+
         if (isStatusLikeColumn(c)) {
           th.innerHTML = `
             <select class="status-filter" data-table="${tableKey}" data-col="${idx}">
@@ -433,16 +514,16 @@
           filters.appendChild(th);
           return;
         }
- 
+
         th.innerHTML = `<input class="col-filter-input" data-table="${tableKey}" data-col="${idx}" placeholder="All" />`;
         filters.appendChild(th);
       });
- 
+
       theadEl.innerHTML = "";
       theadEl.appendChild(header);
       theadEl.appendChild(filters);
     }
- 
+
     function parseDateSafe(v) {
       if (!v) return null;
       const s = String(v).trim();
@@ -450,7 +531,7 @@
       const d = new Date(isoish);
       return isNaN(d.getTime()) ? null : d;
     }
- 
+
     function startOfWeek(d) {
       const x = new Date(d);
       const day = x.getDay();
@@ -459,14 +540,14 @@
       x.setHours(0, 0, 0, 0);
       return x;
     }
- 
+
     function startOfMonth(d) {
       const x = new Date(d);
       x.setDate(1);
       x.setHours(0, 0, 0, 0);
       return x;
     }
- 
+
     function presetRange(preset) {
       const now = new Date();
       const to = new Date(now);
@@ -477,40 +558,40 @@
       if (preset === "month") return { from: startOfMonth(now), to };
       return { from: null, to: null };
     }
- 
+
     function fillStatusDropdown(tableEl) {
       const tbody = tableEl.querySelector("tbody");
       const filters = tableEl.querySelectorAll(".status-filter");
       if (!filters.length) return;
- 
+
       filters.forEach(sel => {
         const colIdx = parseInt(sel.dataset.col, 10);
         const values = new Set();
- 
+
         Array.from(tbody.querySelectorAll("tr")).forEach(tr => {
           const td = tr.querySelectorAll("td")[colIdx];
           const v = (td?.innerText || "").trim();
           if (v) values.add(v);
         });
- 
+
         const current = sel.value;
         sel.innerHTML = `<option value="">All</option>` +
           Array.from(values).sort().map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
         sel.value = current;
       });
     }
- 
+
     function attachFilters(tableEl) {
       if (!tableEl || tableEl.dataset.filtersBound === "1") return;
       tableEl.dataset.filtersBound = "1";
- 
+
       const tbody = tableEl.querySelector("tbody");
- 
+
       // one global popup reused
       let globalDatePop = null;
       function ensureDatePop() {
         if (globalDatePop) return globalDatePop;
- 
+
         const div = document.createElement("div");
         div.className = "date-pop d-none";
         div.innerHTML = `
@@ -528,7 +609,7 @@
     `;
         document.body.appendChild(div);
         globalDatePop = div;
- 
+
         // close on outside click
         document.addEventListener("click", (e) => {
           if (!globalDatePop.classList.contains("d-none")) {
@@ -537,13 +618,13 @@
             if (!inside && !isPreset) globalDatePop.classList.add("d-none");
           }
         });
- 
+
         return globalDatePop;
       }
- 
+
       function rowMatches(tr) {
         const tds = Array.from(tr.querySelectorAll("td"));
- 
+
         // text filters
         for (const inp of tableEl.querySelectorAll(".col-filter-input")) {
           const colIdx = parseInt(inp.dataset.col, 10);
@@ -552,7 +633,7 @@
           const cell = (tds[colIdx]?.innerText || "").toLowerCase();
           if (!cell.includes(needle)) return false;
         }
- 
+
         // status dropdown
         for (const sel of tableEl.querySelectorAll(".status-filter")) {
           const colIdx = parseInt(sel.dataset.col, 10);
@@ -561,17 +642,17 @@
           const cell = (tds[colIdx]?.innerText || "").trim();
           if (cell !== pick) return false;
         }
- 
+
         // date preset/custom
         for (const sel of tableEl.querySelectorAll(".date-preset")) {
           const colIdx = parseInt(sel.dataset.col, 10);
           const mode = sel.value;
           if (mode === "all") continue;
- 
+
           const cellVal = (tds[colIdx]?.innerText || "").trim();
           const cellDate = parseDateSafe(cellVal);
           if (!cellDate) return false;
- 
+
           if (mode === "custom") {
             const from = sel._from || null;
             const to = sel._to || null;
@@ -583,26 +664,26 @@
             if (to && cellDate > to) return false;
           }
         }
- 
+
         return true;
       }
- 
+
       function apply() {
         Array.from(tbody.querySelectorAll("tr")).forEach(r => {
           r.style.display = rowMatches(r) ? "" : "none";
         });
       }
- 
+
       tableEl.addEventListener("input", (e) => {
         if (e.target.classList.contains("col-filter-input")) apply();
       });
- 
+
       tableEl.addEventListener("change", (e) => {
         if (e.target.classList.contains("status-filter")) apply();
- 
+
         if (e.target.classList.contains("date-preset")) {
           const sel = e.target;
- 
+
           if (sel.value !== "custom") {
             // close popup if open
             const pop = ensureDatePop();
@@ -610,37 +691,37 @@
             apply();
             return;
           }
- 
+
           // OPEN floating popup near the dropdown
           const pop = ensureDatePop();
           const rect = sel.getBoundingClientRect();
           pop.style.top = `${rect.bottom + 8}px`;
           pop.style.left = `${Math.min(rect.left, window.innerWidth - 290)}px`;
- 
+
           // load stored values for this select
           pop.querySelector(".date-from").value = sel._fromISO || "";
           pop.querySelector(".date-to").value = sel._toISO || "";
- 
+
           pop.classList.remove("d-none");
- 
+
           // bind buttons once per open
           const applyBtn = pop.querySelector(".date-apply");
           const clearBtn = pop.querySelector(".date-clear");
- 
+
           applyBtn.onclick = () => {
             const fromVal = pop.querySelector(".date-from").value;
             const toVal = pop.querySelector(".date-to").value;
- 
+
             sel._fromISO = fromVal || "";
             sel._toISO = toVal || "";
- 
+
             sel._from = fromVal ? new Date(fromVal + "T00:00:00") : null;
             sel._to = toVal ? new Date(toVal + "T23:59:59") : null;
- 
+
             pop.classList.add("d-none");
             apply();
           };
- 
+
           clearBtn.onclick = () => {
             pop.querySelector(".date-from").value = "";
             pop.querySelector(".date-to").value = "";
@@ -648,53 +729,77 @@
             sel._toISO = "";
             sel._from = null;
             sel._to = null;
- 
+
             sel.value = "all";
             pop.classList.add("d-none");
             apply();
           };
         }
       });
- 
+
       apply();
     }
- 
- 
+
+
     function renderTable(tableEl, cols, rows, tableKey) {
       const thead = tableEl.querySelector("thead");
       const tbody = tableEl.querySelector("tbody");
- 
+
       cols = cols || [];
       rows = rows || [];
- 
-      // ✅ remove ERROR_MESSAGE only from reinit_log
-      if (tableKey === "reinit") {
-        const dropIdx = cols.findIndex(c => String(c).toLowerCase() === "error_message");
-        if (dropIdx !== -1) {
-          cols = cols.filter((_, i) => i !== dropIdx);
-          rows = rows.map(r => (r || []).filter((_, i) => i !== dropIdx));
-        }
-      }
- 
-      buildHeaderAndFilters(thead, cols, tableKey);
- 
+
+      // Find indexes (case-insensitive)
+      const errIdx = cols.findIndex(c => String(c).toLowerCase() === "error_message");
+      const statusIdx = cols.findIndex(c => String(c).toLowerCase().includes("status"));
+
+      // Build a DISPLAY column set: hide error_message column from table UI
+      const displayCols = (errIdx === -1) ? cols : cols.filter((_, i) => i !== errIdx);
+
+      buildHeaderAndFilters(thead, displayCols, tableKey);
+
       if (!rows.length) {
-        tbody.innerHTML = `<tr><td colspan="${Math.max(1, cols.length)}" class="text-center text-gray">No rows</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="${Math.max(1, displayCols.length)}" class="text-center text-gray">No rows</td></tr>`;
       } else {
         tbody.innerHTML = rows.map(rw => {
-          const cells = (rw || []).map((v, i) => {
-            const cname = cols[i] ? String(cols[i]).toUpperCase() : "";
-            return `<td data-colname="${esc(cname)}">${esc(v)}</td>`;
+          rw = rw || [];
+          const errMsg = (errIdx !== -1) ? (rw[errIdx] ?? "") : "";
+
+          // Build cells but skip error_message col
+          const cells = displayCols.map((colName) => {
+            const realIdx = cols.indexOf(colName); // map back to original index
+            const v = rw[realIdx];
+
+            // Status column: make FAILED clickable
+            if (statusIdx !== -1 && realIdx === statusIdx) {
+              const st = String(v ?? "").toUpperCase().trim();
+
+              if (st === "FAILED") {
+                return `
+                  <td data-colname="${esc(String(colName).toUpperCase())}">
+                    <a href="#" class="status-click" data-error="${esc(errMsg)}"
+                      style="color: #d00000; cursor: pointer;font-weight: 600;">
+                      Failed 👁
+                    </a>
+                  </td>`;
+              }
+
+              // SUCCESS or anything else = plain text
+              return `<td data-colname="${esc(String(colName).toUpperCase())}">${esc(st || v)}</td>`;
+            }
+
+            return `<td data-colname="${esc(String(colName).toUpperCase())}">${esc(v)}</td>`;
           }).join("");
+
           return `<tr>${cells}</tr>`;
         }).join("");
       }
- 
+
       attachFilters(tableEl);
       fillStatusDropdown(tableEl);
     }
- 
- 
+
+
+
     document.addEventListener("DOMContentLoaded", () => {
       const form = document.getElementById("script2-form");
       const progressWrap = document.getElementById("run-progress");
@@ -702,15 +807,15 @@
       const bar = document.getElementById("run-progress-bar");
       const btn = document.getElementById("run-btn");
       const consoleBox = document.getElementById("exec-console");
- 
+
       function setPct(pct, elapsedSec) {
         pct = Math.max(0, Math.min(100, parseInt(pct || 0, 10)));
         bar.style.width = `${pct}%`;
         progressText.textContent = `Running… ${pct}% · ${fmtTime(elapsedSec)}`;
       }
- 
+
       loadAutoFill();
- 
+
       try {
         const li0 = localStorage.getItem("dsx_log_instance") || "";
         const ld0 = localStorage.getItem("dsx_log_database") || "";
@@ -719,7 +824,7 @@
         if (ld0 && !document.getElementById("ReinitLogDatabase")?.value) document.getElementById("ReinitLogDatabase").value = ld0;
         if (lt0 && !document.getElementById("ReinitLogTable")?.value) document.getElementById("ReinitLogTable").value = lt0;
       } catch { }
- 
+
       ["ReinitLogInstance", "ReinitLogDatabase", "ReinitLogTable"].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
@@ -731,22 +836,22 @@
           } catch { }
         });
       });
- 
+
       loadRecent();
       document.getElementById("recent-refresh-btn").addEventListener("click", loadRecent);
       document.getElementById("ReinitLogTable").addEventListener("blur", loadRecent);
- 
+
       /* KEEPING YOUR Script2 execution logic as-is */
       form.addEventListener("submit", async (e) => {
         e.preventDefault();
- 
+
         consoleBox.value = "";
         progressWrap.classList.remove("d-none");
         btn.disabled = true;
         btn.textContent = "Running…";
         bar.style.width = "0%";
         progressText.textContent = "Starting… 0% · 00:00";
- 
+
         const fd = new FormData(form);
         const resp = await fetch("{{ url_for('replication.run_script2_stream') }}", { method: "POST", body: fd });
         if (!resp.ok || !resp.body) {
@@ -755,28 +860,28 @@
           progressText.textContent = "Failed to start streaming.";
           return;
         }
- 
+
         const reader = resp.body.getReader();
         const decoder = new TextDecoder("utf-8");
         let buffer = "";
- 
+
         function handleSseChunk(chunk) {
           buffer += chunk;
           let idx;
           while ((idx = buffer.indexOf("\n\n")) !== -1) {
             const raw = buffer.slice(0, idx).trim();
             buffer = buffer.slice(idx + 2);
- 
+
             let eventName = "message";
             let dataLine = "";
             for (const line of raw.split("\n")) {
               if (line.startsWith("event:")) eventName = line.slice(6).trim();
               if (line.startsWith("data:")) dataLine += line.slice(5).trim();
             }
- 
+
             let data = {};
             try { data = dataLine ? JSON.parse(dataLine) : {}; } catch { }
- 
+
             if (eventName === "line") {
               if (data.line) {
                 consoleBox.value += data.line + "\n";
@@ -784,7 +889,7 @@
               }
               setPct(data.pct ?? 50, data.elapsed_sec ?? 0);
             }
- 
+
             if (eventName === "done") {
               setPct(100, data.elapsed_sec ?? 0);
               btn.disabled = false;
@@ -793,29 +898,29 @@
             }
           }
         }
- 
+
         while (true) {
           const { value, done } = await reader.read();
           if (done) break;
           handleSseChunk(decoder.decode(value, { stream: true }));
         }
       });
- 
+
       // Logs modal (center + filters)
       async function openLogsModal() {
         const overlay = document.getElementById('logs-modal');
         if (overlay) overlay.style.display = 'flex'; // ✅ important for centering
- 
+
         document.getElementById('logs-db-label').textContent = 'Loading…';
- 
+
         const replTableEl = document.getElementById('logs-repl-table');
         const reinitTableEl = document.getElementById('logs-reinit-table');
- 
+
         replTableEl.querySelector("thead").innerHTML = "";
         replTableEl.querySelector("tbody").innerHTML = `<tr><td class="text-center text-gray">Loading…</td></tr>`;
         reinitTableEl.querySelector("thead").innerHTML = "";
         reinitTableEl.querySelector("tbody").innerHTML = `<tr><td class="text-center text-gray">Loading…</td></tr>`;
- 
+
         try {
           const li = document.getElementById("ReinitLogInstance")?.value?.trim() || "";
           const ld = document.getElementById("ReinitLogDatabase")?.value?.trim() || "";
@@ -823,15 +928,15 @@
           const qp = (!li || !ld)
             ? ``
             : `?log_instance=${encodeURIComponent(li)}&log_database=${encodeURIComponent(ld)}${reinitTable ? `&reinit_table=${encodeURIComponent(reinitTable)}` : ``}`;
- 
+
           const r = await fetch(`{{ url_for('replication.api_logs_data') }}${qp}`, { cache: 'no-store' });
           const data = await r.json();
- 
+
           document.getElementById('logs-db-label').textContent = `${data.log_instance || 'NA'} / ${data.log_database || 'NA'}`;
- 
+
           const repl = data.repl_log || { cols: [], rows: [] };
           const reinit = data.reinit_log || { cols: [], rows: [] };
- 
+
           renderTable(replTableEl, repl.cols, repl.rows, "repl");
           renderTable(reinitTableEl, reinit.cols, reinit.rows, "reinit");
         } catch {
@@ -840,19 +945,52 @@
           reinitTableEl.querySelector("tbody").innerHTML = `<tr><td class="text-center text-gray">Failed to load</td></tr>`;
         }
       }
- 
+
       function closeLogsModal() {
         const overlay = document.getElementById('logs-modal');
         if (overlay) overlay.style.display = 'none';
       }
- 
+
       document.getElementById('open-logs')?.addEventListener('click', (e) => { e.preventDefault(); openLogsModal(); });
       document.getElementById('logs-close')?.addEventListener('click', closeLogsModal);
       document.getElementById('logs-modal')?.addEventListener('click', (e) => { if (e.target && e.target.id === 'logs-modal') closeLogsModal(); });
       document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeLogsModal(); });
     });
+
+    function openErrorModal(msg) {
+      document.getElementById("error-text").textContent = msg || "No error message captured.";
+      document.getElementById("error-modal").style.display = "flex";
+    }
+    function closeErrorModal() {
+      document.getElementById("error-modal").style.display = "none";
+    }
+
+    document.addEventListener("click", (e) => {
+      const a = e.target.closest(".status-click");
+      if (!a) return;
+      e.preventDefault();
+      openErrorModal(a.getAttribute("data-error") || "");
+    });
+
+    document.addEventListener("click", (e) => {
+      if (e.target && e.target.id === "error-close") {
+        e.preventDefault();
+        closeErrorModal();
+      }
+    });
+
+    // 3) Click outside the white box closes too (optional)
+    document.addEventListener("click", (e) => {
+      if (e.target && e.target.id === "error-modal") closeErrorModal();
+    });
+
+    // 4) ESC closes too (optional)
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeErrorModal();
+    });
+
   </script>
- 
+
   <!-- Logs Modal (popup) -->
   <div id="logs-modal" class="modal-overlay">
     <div class="modal">
@@ -863,7 +1001,7 @@
         </div>
         <button id="logs-close" class="btn-secondary" style="padding:8px 12px;border-radius:10px;">Close</button>
       </div>
- 
+
       <div class="modal-body">
         <div class="card-simple" style="padding:14px;">
           <div class="font-weight-bold">repl_log</div>
@@ -876,7 +1014,7 @@
             </div>
           </div>
         </div>
- 
+
         <div class="card-simple mt-4" style="padding:14px;">
           <div class="font-weight-bold">reinit_log</div>
           <div class="table-wrap mt-2">
@@ -888,11 +1026,37 @@
             </div>
           </div>
         </div>
- 
+
       </div>
     </div>
   </div>
+
+  <!-- Error Popup Modal -->
+  <!-- Error Popup Modal -->
+  <div id="error-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:99999;
+     align-items:center; justify-content:center;">
+    <div style="background:#ffffff; color:#000000; width:min(760px, 92vw); border-radius:12px; padding:16px;
+       box-shadow:0 10px 30px rgba(0,0,0,.35);">
+
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+        <div style="font-weight:800; font-size:18px; color:#d00000;">Error Details</div>
+
+        <!-- IMPORTANT: correct id -->
+        <button type="button" id="error-close"
+          style="padding:8px 12px; border-radius:10px; border:1px solid #ccc; background:#f3f3f3; cursor:pointer;">
+          X
+        </button>
+      </div>
+
+      <pre id="error-text" style="margin-top:12px; white-space:pre-wrap; background:#ffffff; color:#000000;
+             border:1px solid #ddd; border-radius:10px; padding:12px; max-height:55vh; overflow:auto;"></pre>
+    </div>
+  </div>
+
+
+
+
+
 </body>
- 
+
 </html>
- 

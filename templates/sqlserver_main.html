@@ -355,7 +355,7 @@
           <div class="card-title">Replication Reinitialization</div>
         </a>
 
-        <a href="/inventory-mgmt/" class="card">
+        <a href="/inventory-mgmt/environments" class="card">
           <img src="../static/inventory.svg"
             alt="Replication Dashboard" class="card-icon" />
           <div class="card-title">Inventory Management</div>
@@ -393,6 +393,13 @@
             alt="ETL / SSIS Automation Icon" style="width: 48px; height: 48px" />
           <span>Data Masking & Classification</span>
         </div>
+
+        <div class="card">
+          <div class="coming-soon-badge">Q1</div>
+          <img src="../static/connection-pattern-1105-svgrepo-com.svg"
+            alt="ETL / SSIS Automation Icon" style="width: 48px; height: 48px" />
+          <span>Document store</span>
+        </div>
       </div>
     </div>
   </main>
@@ -405,36 +412,7 @@
       </div>
     </footer>
 
-  <script>
-    window.addEventListener('beforeunload', function () {
-      const data = JSON.stringify({
-        page: window.location.pathname,
-        timestamp: new Date().toISOString()
-      });
-
-      // 👇 This is CRITICAL: content type must be application/json
-      const blob = new Blob([data], { type: 'application/json' });
-      navigator.sendBeacon('/log-exit', blob);
-    });
-  </script>
-  <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      const now = new Date().toISOString();
-      const page = window.location.pathname;
-
-      fetch('/log-entry', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          page: page,
-          timestamp: now
-        })
-      });
-    });
-  </script>
-
+    <script src="/static/js/page_exit_beacon.js" defer></script>
 </body>
 
 </html>

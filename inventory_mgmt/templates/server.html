@@ -402,11 +402,28 @@
 </head>
 
 <body class="inventory-body">
-  {% set breadcrumb = [
-  {'label': 'SQL Server Main', 'href': '/sqlserver_main'},
-  {'label': 'Inventory Management', 'href': url_for('index')},
-  {'label': server.name, 'active': True}
-  ] %}
+  {% set _from = request.args.get('from_page') %}
+  {% set _from_env = request.args.get('from_env') %}
+  {% if _from == 'env' %}
+    {% set breadcrumb = [
+      {'label': 'SQL Server Main', 'href': '/sqlserver_main'},
+      {'label': 'Environment Summary', 'href': url_for('environments_summary')},
+      {'label': server.name, 'active': True}
+    ] %}
+  {% elif _from == 'inventory' and _from_env == 'env' %}
+    {% set breadcrumb = [
+      {'label': 'SQL Server Main', 'href': '/sqlserver_main'},
+      {'label': 'Environment Summary', 'href': url_for('environments_summary')},
+      {'label': 'Inventory Management', 'href': url_for('index')},
+      {'label': server.name, 'active': True}
+    ] %}
+  {% else %}
+    {% set breadcrumb = [
+      {'label': 'SQL Server Main', 'href': '/sqlserver_main'},
+      {'label': 'Inventory Management', 'href': url_for('index')},
+      {'label': server.name, 'active': True}
+    ] %}
+  {% endif %}
   {% include "_dsx_inventory_header.html" %}
 
   <main class="container py-4">
@@ -563,9 +580,42 @@
             </div>
 
             <div class="info-item">
-              <div class="info-label">SQL Version</div>
+              <div class="info-label">SQL Build Version</div>
               <div class="info-value">
                 {{ metrics.identity.sql_version or 'N/A' }}
+              </div>
+            </div>
+
+            <div class="info-item">
+              <div class="info-label">SQL Version</div>
+              <div class="info-value">
+                {% set sv = metrics.identity.sql_version or '' %}
+                {% set major = None %}
+                {% for tok in sv.split() %}
+                  {% if major is none and '.' in tok and tok[0].isdigit() %}
+                    {% set major = tok.split('.')[0] %}
+                  {% endif %}
+                {% endfor %}
+                {% if not major and sv and sv[0].isdigit() %}
+                  {% set major = sv.split('.')[0] %}
+                {% endif %}
+
+                {% if major %}
+                  {% set m = major|int %}
+                  {% if m >= 16 %}2022
+                  {% elif m == 15 %}2019
+                  {% elif m == 14 %}2017
+                  {% elif m == 13 %}2016
+                  {% elif m == 12 %}2014
+                  {% elif m == 11 %}2012
+                  {% elif m == 10 %}2008
+                  {% elif m == 9 %}2005
+                  {% elif m == 8 %}2000
+                  {% else %}v{{ major }}
+                  {% endif %}
+                {% else %}
+                  N/A
+                {% endif %}
               </div>
             </div>
 
@@ -687,6 +737,7 @@
             <div class="info-label">MAXDOP</div>
             <div class="info-value">
               {{ metrics.config.maxdop if metrics.config.maxdop is not none else 'N/A' }}
+              <div class="kpi-sub">Suggested : 4 </div>
             </div>
           </div>
           <div class="info-item">
@@ -694,6 +745,7 @@
             <div class="info-value">
               {{ metrics.config.cost_threshold_for_parallelism if metrics.config.cost_threshold_for_parallelism is not
               none else 'N/A' }}
+              <div class="kpi-sub">Suggested : 50 </div>
             </div>
           </div>
 
@@ -805,12 +857,19 @@
     // DB dashboard navigation
     const btn = document.getElementById("viewDbBtn");
     const select = document.getElementById("dbSelect");
+    const fromPage = "{{ request.args.get('from_page') or '' }}";
+    const fromEnv = "{{ request.args.get('from_env') or '' }}";
+
+    function buildQuery() {
+      if (!fromPage) return '';
+      return `?from_page=${encodeURIComponent(fromPage)}` + (fromEnv ? `&from_env=${encodeURIComponent(fromEnv)}` : '');
+    }
 
     if (btn && select) {
       btn.addEventListener("click", () => {
         const dbName = select.value;
         if (!dbName) return;
-        const url = `${base}/server/{{ server.id }}/db/` + encodeURIComponent(dbName);
+        const url = `${base}/server/{{ server.id }}/db/` + encodeURIComponent(dbName) + buildQuery();
         window.location.href = url;
       });
     }

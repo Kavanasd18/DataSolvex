@@ -3,6 +3,7 @@ import datetime
 
 import pyodbc
 from flask import Blueprint, render_template, request, jsonify, session
+from dotenv import load_dotenv
 
 
 # ---------------------------------------------------------
@@ -20,8 +21,11 @@ SQL_SCRIPT_PATH = os.path.join(BASE_DIR, "scripts", "ssis", "ssis_update.sql")
 # ---------------------------------------------------------
 # LOGGING SERVER + DATABASE (FIXED)
 # ---------------------------------------------------------
-LOG_SERVER = "ISMGMTDBP02\INST1"
-LOG_DATABASE = "DBRefresh"
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
+
+
+LOG_SERVER = os.getenv("LOG_SERVER")
+LOG_DATABASE = os.getenv("LOG_DATABASE")
 
 
 def pick_pyodbc_driver():

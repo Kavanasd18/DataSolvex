@@ -21,6 +21,7 @@ from flask import has_request_context
 from threading import local
 import pandas as pd
 from log_dash import create_log_dash
+from dotenv import load_dotenv
 
 
 IST = timezone(timedelta(hours=5, minutes=30 ))
@@ -37,6 +38,9 @@ app.register_blueprint(ssis_bp, url_prefix='/ssis')
 
 app.secret_key = 'your_secret_key'  # Replace with a secure key
 dash_app = create_log_dash(app)
+
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
+
 
 # --------------------------------------------------
 # Mount Inventory Management app under same port:
@@ -63,8 +67,8 @@ app.register_blueprint(replication_bp,url_prefix="/replication")
 
 
 # Admin credentials (static)
-ADMIN_USERNAME = 'admin'
-ADMIN_PASSWORD = 'Password123#'  # Replace with your admin password
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")  # Replace with your admin password
 
 # SQL Server connection details
 def get_db_connection(server_name, db_name):
@@ -239,7 +243,7 @@ def create_login():
 
     # Get the central database name from the form (it comes from the UI)
     central_db_name = 'EPMDBCCM'
-
+    central_server_name = os.getenv("central_server_name")
     
 
     try:
@@ -263,8 +267,8 @@ def create_login():
         cursor.execute(f"USE {database_name}; CREATE USER {user_name} FOR LOGIN {user_login_name};")
         
         # 3rd connection: For inserting login details into the central database
-        print(f"Connecting to central database: {central_db_name} on server: LAPTOP-3AU3RIT3")
-        central_conn = pyodbc.connect(f'DRIVER={{SQL Server}};SERVER=LAPTOP-3AU3RIT3;DATABASE={central_db_name};UID=EPMDBCCM;PWD=BujB8587*vvrwb')
+        print(f"Connecting to central database: {central_db_name} on server: {central_server_name}")
+        central_conn = pyodbc.connect(f'DRIVER={{SQL Server}};SERVER={central_server_name};DATABASE={central_db_name};UID=EPMDBCCM;PWD=BujB8587*vvrwb')
         central_cursor = central_conn.cursor()
 
         # Get the login_name from session (this is the actual logged-in user)
@@ -444,6 +448,165 @@ def normalize_page(page):
     return page
 
 
+# --------------------------------------------------
+# AUTO SERVER-SIDE PAGE LOGGING (logs ALL pages)
+# --------------------------------------------------
+
+def should_auto_log_request():
+    """Return True if this request should be auto-logged as a page visit."""
+    if request.method != "GET":
+        return False
+
+    path = request.path or "/"
+
+    # Skip static/assets + our logging endpoints themselves
+    if path.startswith("/static/") or path == "/favicon.ico":
+        return False
+    if path in ("/log-entry", "/log-exit", "/log-exit-beacon"):
+        return False
+
+    # Skip Dash internal endpoints (your log dashboard)
+    if path.startswith("/_dash") or path.startswith("/dash"):
+        return False
+
+    # Skip ajax / fetch calls
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        return False
+    best = getattr(request, "accept_mimetypes", None)
+    if best and best.best == "application/json":
+        return False
+
+    return True
+
+
+@app.before_request
+def auto_page_access_logger():
+    """
+    Logs ALL page visits server-side (no template JS needed).
+
+    Behavior (per browser session):
+    - On every GET HTML page:
+      - closes previous open page log (exit_time + duration)
+      - inserts new enter_time row for current page
+    """
+    if not should_auto_log_request():
+        return None
+
+    try:
+        user = session.get("login_name", "anonymous")
+        ip = get_user_ip()
+        page = normalize_page(request.path)
+
+        # Store as naive datetime in SQL Server (IST)
+        now_ist = datetime.now(IST).replace(tzinfo=None)
+
+        conn = get_sql_server_connection()
+        cur = conn.cursor()
+
+        # Close previous open page log (tracked in session)
+        open_log_id = session.get("open_log_id")
+        open_enter_iso = session.get("open_log_enter_iso")
+
+        if open_log_id and open_enter_iso:
+            try:
+                open_enter_dt = datetime.fromisoformat(open_enter_iso)
+                duration = (now_ist - open_enter_dt).total_seconds()
+
+                cur.execute(
+                    """
+                    UPDATE page_access_logs
+                    SET exit_time = ?, duration_seconds = ?
+                    WHERE id = ? AND exit_time IS NULL
+                    """,
+                    now_ist, duration, open_log_id
+                )
+            except Exception:
+                # If parsing fails, just skip duration update
+                pass
+
+        # Insert new page log row and remember its id in session
+        cur.execute(
+            """
+            INSERT INTO page_access_logs (login_name, page, ip_address, enter_time, exit_time, duration_seconds)
+            OUTPUT INSERTED.id
+            VALUES (?, ?, ?, ?, NULL, NULL)
+            """,
+            user, page, ip, now_ist
+        )
+        new_id = cur.fetchone()[0]
+
+        conn.commit()
+        conn.close()
+
+        session["open_log_id"] = int(new_id)
+        session["open_log_enter_iso"] = now_ist.isoformat()
+
+    except Exception as e:
+        # Never break page load due to logging failure
+        print(f"[AUTO_PAGE_LOGGER] failed: {e}")
+
+    return None
+
+
+@app.route("/log-exit-beacon", methods=["POST"])
+def log_exit_beacon():
+    """
+    Best-effort 'tab close / unload' exit capture.
+    JS uses navigator.sendBeacon() to hit this endpoint.
+
+    It closes the currently-open page log stored in session.
+    """
+    try:
+        if not session.get("open_log_id") or not session.get("open_log_enter_iso"):
+            return ("", 204)
+
+        now_ist = datetime.now(IST).replace(tzinfo=None)
+
+        open_log_id = session.get("open_log_id")
+        open_enter_iso = session.get("open_log_enter_iso")
+
+        try:
+            open_enter_dt = datetime.fromisoformat(open_enter_iso)
+            duration = (now_ist - open_enter_dt).total_seconds()
+        except Exception:
+            duration = None
+
+        conn = get_sql_server_connection()
+        cur = conn.cursor()
+
+        if duration is None:
+            cur.execute(
+                """
+                UPDATE page_access_logs
+                SET exit_time = ?
+                WHERE id = ? AND exit_time IS NULL
+                """,
+                now_ist, open_log_id
+            )
+        else:
+            cur.execute(
+                """
+                UPDATE page_access_logs
+                SET exit_time = ?, duration_seconds = ?
+                WHERE id = ? AND exit_time IS NULL
+                """,
+                now_ist, duration, open_log_id
+            )
+
+        conn.commit()
+        conn.close()
+
+        # Clear open marker so we don't double-close later
+        session.pop("open_log_id", None)
+        session.pop("open_log_enter_iso", None)
+
+        return ("", 204)
+
+    except Exception as e:
+        print(f"[EXIT_BEACON] failed: {e}")
+        return ("", 204)
+
+
 @app.route('/log-entry', methods=['POST'])
 def log_entry():
     try:
@@ -536,10 +699,12 @@ def log_exit():
 
 # SQL Server connection helper
 def get_sql_server_connection():
+    Helper_server = os.getenv("Helper_server")
+    Helper_database = os.getenv("Helper_database")
     conn_str = (
         "DRIVER={ODBC Driver 17 for SQL Server};"
-        "SERVER=LAPTOP-3AU3RIT3;"
-        "DATABASE=dbrefresh;"
+        f"SERVER={Helper_server};"
+        f"DATABASE={Helper_database};"
         "Trusted_Connection=yes;"
     )
     return pyodbc.connect(conn_str)
@@ -3965,11 +4130,13 @@ def database_page():
     
     return render_template('db_refresh.html', server=server_name, database=database_name,script_name2=script_name2,script_name=script_name,script_name3=script_name3, script_name4=script_name4,script_name5=script_name5,script_name6=script_name6,script_name7=script_name7,script_name8=script_name8)
 
+repl_server = os.getenv("repl_server")
+repl_database = os.getenv("repl_database")
 
 REPL_CONN_STR = (
     "DRIVER={ODBC Driver 17 for SQL Server};"
-    "SERVER=LAPTOP-3AU3RIT3;"
-    "DATABASE=Dbrefresh;"
+    f"SERVER={repl_server};"
+    f"DATABASE={repl_database};"
     "Trusted_Connection=yes;"
 )
 
@@ -4047,10 +4214,13 @@ def dashboard_summary():
     )
 
 def get_db_connection_POC():
+
+    POC_server = os.getenv("POC_server")
+    POC_database = os.getenv("POC_database")
     conn = pyodbc.connect(
         "DRIVER={ODBC Driver 17 for SQL Server};"
-        "SERVER=LAPTOP-3AU3RIT3;"
-        "DATABASE=DBrefresh;"
+        f"SERVER={POC_server};"
+        f"DATABASE={POC_database};"
         "Trusted_Connection=yes;")
     return conn
  
@@ -4108,6 +4278,6 @@ def get_applications():
 # Run the Flask application
 if __name__ == '__main__':
     init_db()
-    app.run(host='0.0.0.0', port=8099,debug='True')
+    app.run(host='0.0.0.0', port=8055,debug='True')
 
 #app.run(host='0.0.0.0', port=5000)

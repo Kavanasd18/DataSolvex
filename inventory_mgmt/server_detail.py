@@ -3,6 +3,8 @@ import os
 import pyodbc
 from datetime import datetime
 from dotenv import load_dotenv
+import subprocess
+import json
 
 # Load the same .env as app.py
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
@@ -12,6 +14,81 @@ INV_DB_NAME = os.getenv("INV_DB_NAME")
 INV_DB_USER = os.getenv("INV_DB_USER")
 INV_DB_PASSWORD = os.getenv("INV_DB_PASSWORD")
 INV_DB_TRUSTED = (os.getenv("INV_DB_TRUSTED", "YES").upper() == "YES")
+
+# ------------------------
+# PowerShell helpers
+# ------------------------
+
+def _run_powershell(ps_command: str) -> tuple[int, str, str]:
+    """Run a PowerShell command on the Flask host and return (rc, stdout, stderr)."""
+    p = subprocess.run(
+        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps_command],
+        capture_output=True,
+        text=True,
+    )
+    return p.returncode, (p.stdout or "").strip(), (p.stderr or "").strip()
+
+
+def _normalize_ps_json(out: str):
+    """ConvertTo-Json may return an object for 1 row; normalize to a list."""
+    if not out:
+        return []
+    data = json.loads(out)
+    if isinstance(data, dict):
+        return [data]
+    return data
+
+
+def fetch_all_volumes_win32(server_name: str) -> list[dict]:
+    """
+    Fetch all non-system Windows volumes from the target server using PowerShell remoting.
+
+    - Excludes EFI/system partitions via SystemVolume
+    - Keeps C:\\
+    - Returns the same keys your template already expects: mount_point, name, total_gb, free_gb, free_pct
+    """
+
+    ps = rf"""
+Invoke-Command -ComputerName '{server_name}' -ScriptBlock {{
+Get-CimInstance Win32_Volume |
+Where-Object {{
+    $_.Capacity -ne $null -and $_.Capacity -gt 0 -and
+    $_.SystemVolume -ne $true -and
+    ($_.DriveLetter -ne $null -or ($_.Name -match '^[A-Z]:\\$'))
+}} |
+Select-Object `
+  @{{n="Mount";e={{$_.Name}}}},
+  @{{n="DriveLetter";e={{$_.DriveLetter}}}},
+  @{{n="Label";e={{$_.Label}}}},
+  @{{n="FileSystem";e={{$_.FileSystem}}}},
+  @{{n="CapacityGB";e={{[math]::Round($_.Capacity/1GB,2)}}}},
+  @{{n="FreeGB";e={{[math]::Round($_.FreeSpace/1GB,2)}}}},
+  @{{n="FreePct";e={{[math]::Round(($_.FreeSpace*100.0)/$_.Capacity,2)}}}} |
+Sort-Object Mount |
+ConvertTo-Json -Depth 3
+}}
+"""
+
+    rc, out, err = _run_powershell(ps)
+    if rc != 0:
+        return []
+
+    try:
+        rows = _normalize_ps_json(out)
+    except Exception:
+        return []
+
+    volumes: list[dict] = []
+    for r in rows:
+        volumes.append({
+            "mount_point": (r.get("Mount") or "").strip(),
+            "name": (r.get("Label") or r.get("FileSystem") or None),
+            "total_gb": float(r.get("CapacityGB") or 0),
+            "free_gb": float(r.get("FreeGB") or 0),
+            "free_pct": float(r.get("FreePct") or 0),
+        })
+
+    return volumes
 
 
 def get_target_connection(server_name: str, database: str = "master"):
@@ -84,20 +161,18 @@ def get_server_charts():
     cur.execute(
         """
         ;WITH db_sizes AS (
-            SELECT
-                d.name AS database_name,
-                CONVERT(DECIMAL(18,2),
-                    SUM(mf.size) * 8.0 / 1024 / 1024
-                ) AS size_gb
-            FROM sys.databases AS d
-            JOIN sys.master_files AS mf
-              ON d.database_id = mf.database_id
-            WHERE d.database_id > 4    -- user DBs only
-            GROUP BY d.name
-        )
-        SELECT TOP (5) database_name, size_gb
-        FROM db_sizes
-        ORDER BY size_gb DESC;
+    SELECT
+        d.name AS database_name,
+        CAST(SUM(CAST(mf.size AS BIGINT)) * 8.0 / 1024 / 1024 AS DECIMAL(38,2)) AS size_gb
+    FROM sys.databases AS d
+    JOIN sys.master_files AS mf
+      ON d.database_id = mf.database_id
+    WHERE d.database_id > 4
+    GROUP BY d.name
+)
+SELECT TOP (5) database_name, size_gb
+FROM db_sizes
+ORDER BY size_gb DESC;
         """
     )
     top_dbs = cur.fetchall()
@@ -108,7 +183,7 @@ def get_server_charts():
 
     for row in top_dbs:
         labels.append(row.database_name)
-        size_val = float(row.size_gb or 0)
+        size_val = bigint(row.size_gb or 0)
         values.append(size_val)
         total_top += size_val
 
@@ -116,9 +191,7 @@ def get_server_charts():
     cur.execute(
         """
         SELECT
-            CONVERT(DECIMAL(18,2),
-                SUM(mf.size) * 8.0 / 1024 / 1024
-            ) AS total_size_gb
+        CAST(SUM(CAST(mf.size AS BIGINT)) * 8.0 / 1024 / 1024 AS DECIMAL(38,2)) AS total_size_gb
         FROM sys.databases AS d
         JOIN sys.master_files AS mf
           ON d.database_id = mf.database_id
@@ -451,44 +524,76 @@ def get_server_metrics(server_id: int):
         "drives": [],
     }
 
-    # Drives (where SQL has files)
-    try:
-        cur.execute(
-            """
-            ;WITH drives AS (
-                SELECT DISTINCT
-                    vs.volume_mount_point,
-                    vs.logical_volume_name,
-                    vs.total_bytes,
-                    vs.available_bytes
-                FROM sys.master_files AS mf
-                CROSS APPLY sys.dm_os_volume_stats(mf.database_id, mf.file_id) AS vs
+    # Drives (all volumes on Windows, excluding EFI/System partitions)
+    # Preferred source: Win32_Volume via PowerShell remoting (shows all drives).
+    # Fallback: dm_os_volume_stats (only volumes that contain SQL files).   
+    vols = fetch_all_volumes_win32(server_name)
+    if vols:
+        hardware["drives"] = vols
+    else:
+        # Fallback: where SQL has files
+        try:
+            cur.execute(
+                """
+                ;WITH drives AS (
+                    SELECT DISTINCT
+                        vs.volume_mount_point,
+                        vs.logical_volume_name,
+                        vs.total_bytes,
+                        vs.available_bytes
+                    FROM sys.master_files AS mf
+                    CROSS APPLY sys.dm_os_volume_stats(mf.database_id, mf.file_id) AS vs
+                )
+                SELECT
+                    volume_mount_point,
+                    logical_volume_name,
+                    total_bytes,
+                    available_bytes
+                FROM drives;
+                """
             )
-            SELECT
-                volume_mount_point,
-                logical_volume_name,
-                total_bytes,
-                available_bytes
-            FROM drives;
-            """
-        )
-        for d in cur.fetchall():
-            total_gb = (d.total_bytes or 0) / 1024.0 / 1024.0 / 1024.0
-            free_gb = (d.available_bytes or 0) / 1024.0 / 1024.0 / 1024.0
-            free_pct = None
-            if total_gb > 0:
-                free_pct = round((free_gb / total_gb) * 100, 1)
-            hardware["drives"].append(
-                {
-                    "mount_point": d.volume_mount_point,
-                    "name": d.logical_volume_name,
-                    "total_gb": total_gb,
-                    "free_gb": free_gb,
-                    "free_pct": free_pct,
-                }
-            )
-    except Exception:
-        hardware["drives"] = []
+            for d in cur.fetchall():
+                total_gb = (d.total_bytes or 0) / 1024.0 / 1024.0 / 1024.0
+                free_gb = (d.available_bytes or 0) / 1024.0 / 1024.0 / 1024.0
+                free_pct = None
+                if total_gb > 0:
+                    free_pct = round((free_gb / total_gb) * 100, 1)
+                hardware["drives"].append(
+                    {
+                        "mount_point": d.volume_mount_point,
+                        "name": d.logical_volume_name,
+                        "total_gb": total_gb,
+                        "free_gb": free_gb,
+                        "free_pct": free_pct,
+                    }
+                )
+        except Exception:
+            # If dm_os_volume_stats isn't available, fall back to listing distinct drive roots
+            try:
+                cur.execute(
+                    """
+                    SELECT DISTINCT
+                        LEFT(physical_name, 3) AS drive_root
+                    FROM sys.master_files
+                    WHERE physical_name IS NOT NULL
+                    ORDER BY drive_root;
+                    """
+                )
+                for r in cur.fetchall():
+                    dr = (r.drive_root or '').strip()
+                    if dr:
+                        hardware["drives"].append(
+                            {
+                                "mount_point": dr,
+                                "name": None,
+                                "total_gb": None,
+                                "free_gb": None,
+                                "free_pct": None,
+                            }
+                        )
+            except Exception:
+                hardware["drives"] = []
+
 
     # ---- Instance Configuration ----
     cur.execute(
@@ -636,7 +741,7 @@ def get_server_metrics(server_id: int):
     cur.execute(
         """
         SELECT
-            CONVERT(DECIMAL(18,2), SUM(size) * 8.0 / 1024 / 1024) AS total_size_gb
+            CONVERT(DECIMAL(38,2), SUM(convert(bigint,size)) * 8.0 / 1024 / 1024) AS total_size_gb
         FROM sys.master_files
         WHERE database_id > 4;
         """

@@ -724,14 +724,21 @@ def _get_function_extra(cursor, full_name: str) -> Dict[str, Any]:
     Function type + return data type.
     """
     sql = """
+    DECLARE @oid INT = OBJECT_ID(?);
+ 
     SELECT
+        o.type AS type_code,
         o.type_desc,
-        rt.name AS return_type
+        -- Scalar function return type is stored as a parameter with parameter_id = 0
+        scalar_return_type = (
+            SELECT TOP (1) TYPE_NAME(p.user_type_id)
+            FROM sys.parameters p
+            WHERE p.object_id = @oid
+              AND p.parameter_id = 0
+        )
     FROM sys.objects o
-    LEFT JOIN sys.types rt
-        ON o.type IN ('FN','TF','IF')  -- scalar or table-valued
-       AND rt.user_type_id = o.type
-    WHERE o.object_id = OBJECT_ID(?);
+    WHERE o.object_id = @oid
+      AND o.type IN ('FN','TF','IF','FS','FT'); 
     """
     # Note: return type via sys.types is tricky; we fallback to parsing definition.
     cursor.execute(sql, (full_name,))

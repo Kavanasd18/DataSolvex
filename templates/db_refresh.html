@@ -37,6 +37,9 @@
           <li class="breadcrumb-item">
             <a href="{{ url_for('sqlserver_main') }}">Microsoft SQL Server</a>
           </li>
+          <li class="breadcrumb-item">
+            <a href="{{ url_for('dbrefresh') }}">Staging Server</a>
+          </li>
           <li class="breadcrumb-item active">Database Refresh</li>
         </ul>
       </div>
@@ -2562,6 +2565,7 @@
       });
     </script>
 
+  <script src="/static/js/page_exit_beacon.js" defer></script>
 </body>
 
 </html>

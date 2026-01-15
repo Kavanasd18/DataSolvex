@@ -310,7 +310,7 @@
   <main>
     <div class="page-header-index"
       style="text-align: center; margin-bottom: var(--space-xl); background-color: var(--primary); padding: var(--space-lg); border-radius: 12px;">
-      <h2>Database Solution Platform</h2>
+      <h2>Enterprise Database Management Platform</h2>
       <p>
         Onestop solution for all the database challenges —powered by DataSturdy, your trusted
         advisor.
@@ -403,36 +403,7 @@
       </div>
     </footer>
 
-  <script>
-    window.addEventListener('beforeunload', function () {
-      const data = JSON.stringify({
-        page: window.location.pathname,
-        timestamp: new Date().toISOString()
-      });
-
-      // 👇 This is CRITICAL: content type must be application/json
-      const blob = new Blob([data], { type: 'application/json' });
-      navigator.sendBeacon('/log-exit', blob);
-    });
-  </script>
-  <script>
-    document.addEventListener('DOMContentLoaded', function () {
-      const now = new Date().toISOString();
-      const page = window.location.pathname;
-
-      fetch('/log-entry', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          page: page,
-          timestamp: now
-        })
-      });
-    });
-  </script>
-
+    <script src="/static/js/page_exit_beacon.js" defer></script>
 </body>
 
 </html>

@@ -7,7 +7,7 @@
 
   <!-- Global Design System -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}" />
-  <!-- <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" /> -->
+
   <style>
     .container {
       max-width: 1600px !important;
@@ -35,9 +35,150 @@
       }
     }
 
-    /* make wrappers not interfere */
     .server-card-wrapper {
       width: 100%;
+    }
+
+    /* =========================
+       Unified single-line toolbar
+       ========================= */
+    .dsx-toolbar {
+      display: flex;
+      gap: 14px;
+      align-items: flex-end;
+      flex-wrap: nowrap;
+    }
+
+    @media (max-width: 1100px) {
+      .dsx-toolbar {
+        flex-wrap: wrap;
+      }
+    }
+
+    .dsx-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 180px;
+    }
+
+    .dsx-field--grow {
+      flex: 1 1 320px;
+    }
+
+    .dsx-field--env {
+      flex: 0 0 140px;
+      min-width: 140px;
+    }
+
+    .dsx-field--btn {
+      flex: 0 0 120px;
+      min-width: 120px;
+    }
+
+    .dsx-control {
+      height: 38px;
+      border-radius: 999px;
+      padding: 6px 12px;
+      border: 1px solid rgba(148, 163, 184, 0.55);
+      background: rgba(255, 255, 255, 0.75);
+      outline: none;
+      width: 100%;
+    }
+
+    .dsx-control:focus {
+      border-color: rgba(37, 99, 235, 0.55);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    }
+
+    .dsx-btn {
+      height: 38px;
+      border-radius: 999px;
+      width: 100%;
+    }
+
+    .dsx-label-spacer {
+      opacity: 0;
+      user-select: none;
+      height: 18px;
+    }
+
+    /* -------------------------------------------
+       DSX Center Popup Modal
+    ------------------------------------------- */
+    .dsx-modal-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(2, 6, 23, 0.55);
+      backdrop-filter: blur(6px);
+      z-index: 99999;
+    }
+
+    .dsx-modal-overlay.show {
+      display: flex;
+    }
+
+    .dsx-modal {
+      width: min(560px, 100%);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      overflow: hidden;
+    }
+
+    .dsx-modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+    }
+
+    .dsx-modal-title {
+      font-weight: 800;
+      font-size: 15px;
+      letter-spacing: 0.2px;
+    }
+
+    .dsx-modal-x {
+      border: none;
+      background: transparent;
+      font-size: 18px;
+      line-height: 1;
+      cursor: pointer;
+      color: rgba(15, 23, 42, 0.75);
+    }
+
+    .dsx-modal-body {
+      padding: 14px 16px;
+      color: rgba(15, 23, 42, 0.9);
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+
+    .dsx-modal-foot {
+      padding: 12px 16px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      border-top: 1px solid rgba(148, 163, 184, 0.25);
+    }
+
+    .dsx-modal.success .dsx-modal-title {
+      color: #0f766e;
+    }
+
+    .dsx-modal.error .dsx-modal-title {
+      color: #b91c1c;
+    }
+
+    .dsx-modal.warn .dsx-modal-title {
+      color: #a16207;
     }
   </style>
 </head>
@@ -46,6 +187,7 @@
 
   {% set breadcrumb = [
   {'label': 'SQL Server Main', 'href': '/sqlserver_main'},
+  {'label': 'Environment Summary', 'href': url_for('environments_summary')},
   {'label': 'Inventory Management', 'active': True}
   ] %}
   {% include "_dsx_inventory_header.html" %}
@@ -58,26 +200,23 @@
         <h1 class="page-title">Inventory Management - Server Overview</h1>
       </div>
     </div>
-    <!-- SEARCH + DROPDOWN ROW -->
+
+    <!-- SEARCH + DROPDOWN + ADD (single line unified) -->
     <div class="row mb-4">
       <div class="col-12">
 
-        <!-- Match card horizontal padding -->
-        <div class="filters-wrap">
-
-          <div class="filter-col">
-            <label for="serverSearch" class="form-label">
-              Search
-            </label>
-            <input id="serverSearch" type="text" class="filter-input w-100"
+        <div class="dsx-toolbar">
+          <!-- Search -->
+          <div class="dsx-field dsx-field--grow">
+            <label for="serverSearch" class="form-label">Search</label>
+            <input id="serverSearch" class="dsx-control"
               placeholder="Server name, environment, SQL version…" />
           </div>
 
-          <div class="filter-col">
-            <label for="serverDropdown" class="form-label">
-              Quick jump to server
-            </label>
-            <select id="serverDropdown" class="filter-input w-100">
+          <!-- Quick jump -->
+          <div class="dsx-field dsx-field--grow">
+            <label for="serverDropdown" class="form-label">Quick jump to server</label>
+            <select id="serverDropdown" class="dsx-control">
               <option value="">Select a server...</option>
               {% for s in servers %}
               <option value="{{ s.id }}">
@@ -87,6 +226,27 @@
             </select>
           </div>
 
+          <!-- Add server name -->
+          <div class="dsx-field dsx-field--grow">
+            <label for="addServerName" class="form-label">Add server</label>
+            <input id="addServerName" class="dsx-control" placeholder="Server name (HOST or HOST\INSTANCE)" />
+          </div>
+
+          <!-- Env dropdown -->
+          <div class="dsx-field dsx-field--env">
+            <label for="addServerEnv" class="form-label">Env</label>
+            <select id="addServerEnv" class="dsx-control">
+              <option value="prod">prod</option>
+              <option value="test">test</option>
+              <option value="dev">dev</option>
+            </select>
+          </div>
+
+          <!-- Add button -->
+          <div class="dsx-field dsx-field--btn">
+            <label class="form-label dsx-label-spacer">Action</label>
+            <button id="addServerBtn" class="btn btn-sm btn-primary dsx-btn" type="button">Add</button>
+          </div>
         </div>
 
       </div>
@@ -94,7 +254,6 @@
 
     <!-- SERVER CARDS -->
     <div class="row" id="serverCards">
-
       {% for s in servers %}
       <div class="col-12 col-md-6 col-xl-4 server-card-wrapper" data-name="{{ s.name | lower }}"
         data-env="{{ (s.environment or '') | lower }}"
@@ -106,14 +265,10 @@
           <!-- HEADER -->
           <div class="d-flex justify-between align-start mb-3">
             <div class="flex-1">
-              <div class="font-weight-semibold">
-                {{ s.name }}
-              </div>
+              <div class="font-weight-semibold">{{ s.name }}</div>
 
               {% if s.environment %}
-              <span class="badge badge-outline mt-1">
-                {{ s.environment }}
-              </span>
+              <span class="badge badge-outline mt-1">{{ s.environment }}</span>
               {% endif %}
             </div>
 
@@ -149,33 +304,88 @@
 
           <!-- FOOTER -->
           <div class="d-flex justify-between align-center">
-            <small class="text-gray">
-              Last scan: {{ s.last_scan|fmt_dt }}
-            </small>
-            <span class="text-info font-weight-semibold">
-              View details →
-            </span>
+            <small class="text-gray">Last scan: {{ s.last_scan|fmt_dt }}</small>
+            <span class="text-info font-weight-semibold">View details →</span>
           </div>
 
         </div>
       </div>
       {% endfor %}
-
     </div>
   </main>
 
   {% include "_dsx_inventory_footer.html" %}
 
+  <!-- DSX Center Popup Modal -->
+  <div id="dsxModalOverlay" class="dsx-modal-overlay" aria-hidden="true">
+    <div class="dsx-modal error" role="dialog" aria-modal="true" aria-labelledby="dsxModalTitle">
+      <div class="dsx-modal-head">
+        <div id="dsxModalTitle" class="dsx-modal-title">Error</div>
+        <button type="button" class="dsx-modal-x" id="dsxModalCloseX" aria-label="Close">✕</button>
+      </div>
+
+      <div id="dsxModalBody" class="dsx-modal-body"></div>
+
+      <div class="dsx-modal-foot">
+        <button type="button" class="btn btn-sm btn-secondary" id="dsxModalCloseBtn">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- JS -->
   <script>
     const base = "{{ request.script_root }}";
 
+    // -----------------------------
+    // DSX centered popup helpers
+    // -----------------------------
+    const modalOverlay = document.getElementById("dsxModalOverlay");
+    const modalBox = modalOverlay?.querySelector(".dsx-modal");
+    const modalTitle = document.getElementById("dsxModalTitle");
+    const modalBody = document.getElementById("dsxModalBody");
+    const modalCloseX = document.getElementById("dsxModalCloseX");
+    const modalCloseBtn = document.getElementById("dsxModalCloseBtn");
+
+    function showPopup({ title = "Error", message = "", kind = "error" } = {}) {
+      if (!modalOverlay || !modalBox || !modalTitle || !modalBody) return;
+
+      modalBox.classList.remove("error", "success", "warn");
+      modalBox.classList.add(kind);
+
+      modalTitle.textContent = title;
+      modalBody.textContent = message || "";
+
+      modalOverlay.classList.add("show");
+      modalOverlay.setAttribute("aria-hidden", "false");
+
+      (modalCloseBtn || modalCloseX)?.focus();
+    }
+
+    function closePopup() {
+      if (!modalOverlay) return;
+      modalOverlay.classList.remove("show");
+      modalOverlay.setAttribute("aria-hidden", "true");
+    }
+
+    modalCloseX?.addEventListener("click", closePopup);
+    modalCloseBtn?.addEventListener("click", closePopup);
+
+    modalOverlay?.addEventListener("click", (e) => {
+      if (e.target === modalOverlay) closePopup();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && modalOverlay?.classList.contains("show")) closePopup();
+    });
+
     // Card click
+    const fromEnv = "{{ request.args.get('from_env') or '' }}";
     document.querySelectorAll(".server-card").forEach(card => {
       card.addEventListener("click", () => {
         const id = card.dataset.serverId;
         if (id) {
-          window.location.href = `${base}/server/${id}`;
+          const q = fromEnv ? `?from_page=inventory&from_env=${fromEnv}` : `?from_page=inventory`;
+          window.location.href = `${base}/server/${id}${q}`;
         }
       });
     });
@@ -183,7 +393,87 @@
     // Dropdown navigation
     document.getElementById("serverDropdown")?.addEventListener("change", e => {
       if (e.target.value) {
-        window.location.href = `${base}/server/${e.target.value}`;
+        const q = fromEnv ? `?from_page=inventory&from_env=${fromEnv}` : `?from_page=inventory`;
+        window.location.href = `${base}/server/${e.target.value}${q}`;
+      }
+    });
+
+    // Add server button (TEST -> ADD)
+    const addBtn = document.getElementById("addServerBtn");
+    const addInput = document.getElementById("addServerName");
+    const addEnv = document.getElementById("addServerEnv");
+
+    function setAddBusy(isBusy, label) {
+      if (!addBtn) return;
+      addBtn.disabled = !!isBusy;
+      addBtn.textContent = label || (isBusy ? "Testing..." : "Add");
+      addBtn.style.opacity = isBusy ? "0.85" : "1";
+      addBtn.style.cursor = isBusy ? "not-allowed" : "pointer";
+    }
+
+    addBtn?.addEventListener("click", async () => {
+      const name = (addInput?.value || "").trim();
+      const env = (addEnv?.value || "").trim();
+
+      if (!name) {
+        showPopup({
+          title: "Missing Server Name",
+          message: "Please enter a server name.",
+          kind: "warn"
+        });
+        return;
+      }
+
+      try {
+        setAddBusy(true, "Testing...");
+
+        // 1) TEST
+        const testRes = await fetch(`${base}/server/test`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ server_name: name })
+        });
+
+        if (!testRes.ok) {
+          const err = await testRes.json().catch(() => ({}));
+          setAddBusy(false, "Add");
+          showPopup({
+            title: "Connection Test Failed",
+            message: (err.message || testRes.statusText),
+            kind: "error"
+          });
+          return;
+        }
+
+        setAddBusy(true, "Adding...");
+
+        // 2) ADD
+        const addRes = await fetch(`${base}/server/add`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ server_name: name, environment: env })
+        });
+
+        if (!addRes.ok) {
+          const err = await addRes.json().catch(() => ({}));
+          setAddBusy(false, "Add");
+          showPopup({
+            title: "Add Server Failed",
+            message: (err.message || addRes.statusText),
+            kind: "error"
+          });
+          return;
+        }
+
+        window.location.reload();
+
+      } catch (ex) {
+        setAddBusy(false, "Add");
+        showPopup({
+          title: "Unexpected Error",
+          message: ex.message,
+          kind: "error"
+        });
       }
     });
 
@@ -202,8 +492,7 @@
           wrap.dataset.os
         ].join(" ");
 
-        wrap.style.display =
-          !term || haystack.includes(term) ? "" : "none";
+        wrap.style.display = !term || haystack.includes(term) ? "" : "none";
       });
     });
   </script>

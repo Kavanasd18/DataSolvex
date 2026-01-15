@@ -8,6 +8,7 @@ import json
 import time
 from datetime import datetime
 import pyodbc
+from dotenv import load_dotenv
  
 replication_bp = Blueprint(
     "replication",
@@ -33,11 +34,13 @@ LAST_SCRIPT1_CONTEXT_PATH = os.path.join(RUN_DIR, "last_script1_context.json")
  
 PATH_TXT = os.path.join(BASE_DIR, "path.txt")
 PUBLICATION_TXT = os.path.join(BASE_DIR, "publication.txt")
- 
-DEFAULT_LOG_INSTANCE = "LAPTOP-3AU3RIT3"
-DEFAULT_LOG_DATABASE = "test_database"
-REPL_LOG_TABLE = "repl_log"
-REINIT_LOG_TABLE = "reinit_log"
+
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'))
+
+DEFAULT_LOG_INSTANCE = os.getenv("DEFAULT_LOG_INSTANCE")
+DEFAULT_LOG_DATABASE = os.getenv("DEFAULT_LOG_DATABASE")
+REPL_LOG_TABLE = os.getenv("REPL_LOG_TABLE")
+REINIT_LOG_TABLE = os.getenv("REINIT_LOG_TABLE")
  
  
 # -----------------------------
@@ -66,7 +69,8 @@ SELECT TOP ({int(limit)})
     publication_name,
     executed_by,
     initiated_time,
-    status
+    status,
+    error_message
 FROM dbo.[{log_table}]
 ORDER BY initiated_time DESC;
 """
@@ -101,7 +105,9 @@ SELECT TOP ({int(limit)})
     instance_name,
     [user],
     reinitialized_instance_name,
-    publication_reinitialized
+    publication_reinitialized,
+    status,
+    error_message
 FROM dbo.[{log_table}]
 ORDER BY dropped_on DESC;
 """

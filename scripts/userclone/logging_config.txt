@@ -1,2 +1,2 @@
-Logging Server: LAPTOP-3AU3RIT3
-Logging Database: test_database
+Logging Server: ismgmtdbp02\inst1
+Logging Database: DBrefresh

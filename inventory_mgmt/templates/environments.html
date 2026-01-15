@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>SQL Inventory – Environments</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Global Design System (same as other inventory pages) -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/global.css') }}" />
+
+  <style>
+    .container {
+      max-width: 1600px !important;
+      width: min(1280px, 100%) !important;
+      margin: 0 auto;
+      padding: 22px 22px 48px;
+      margin-top: 110px;
+    }
+
+    .page-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .env-section {
+      margin-top: 18px;
+    }
+
+    .env-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 16px 0 10px;
+    }
+
+    .env-title h2 {
+      margin: 0;
+      font-size: 18px;
+      letter-spacing: 0.2px;
+    }
+
+    .table-wrap {
+      background: #fff;
+      border: 1px solid rgba(15, 23, 42, 0.08);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead th {
+      text-align: left;
+      padding: 12px 12px;
+      font-size: 12px;
+      color: rgba(15, 23, 42, 0.7);
+      background: rgba(37, 99, 235, 0.06);
+      border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+      white-space: nowrap;
+    }
+
+    tbody td {
+      padding: 12px 12px;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+      vertical-align: top;
+      font-size: 13px;
+    }
+
+    tbody tr:hover {
+      background: rgba(2, 132, 199, 0.05);
+    }
+
+    .server-link {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .server-link:hover {
+      text-decoration: underline;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: rgba(2, 132, 199, 0.10);
+      color: rgba(2, 132, 199, 1);
+      border: 1px solid rgba(2, 132, 199, 0.18);
+      white-space: nowrap;
+    }
+
+    /* Make SQL version rows feel clickable */
+    .sql-row {
+      cursor: pointer;
+    }
+
+    .sql-row td:first-child {
+      font-weight: 600;
+      color: rgba(2, 132, 199, 1);
+    }
+
+    .sql-row td:first-child span {
+      text-decoration: none;
+    }
+
+    .sql-row:hover td:first-child span {
+      text-decoration: underline;
+    }
+
+    /* Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      z-index: 9999;
+    }
+
+    .modal {
+      width: min(860px, 96vw);
+      max-height: 85vh;
+      overflow: auto;
+      background: #fff;
+      border-radius: 16px;
+      border: 1px solid rgba(15, 23, 42, 0.10);
+      box-shadow: 0 16px 42px rgba(15, 23, 42, 0.25);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+      background: rgba(37, 99, 235, 0.05);
+    }
+
+    .modal-header h3 {
+      margin: 0;
+      font-size: 15px;
+    }
+
+    .modal-close {
+      border: 0;
+      background: transparent;
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+      color: rgba(15, 23, 42, 0.7);
+    }
+
+    .modal-body {
+      padding: 14px 16px 18px;
+    }
+
+    .modal-list {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .modal-list li {
+      margin: 8px 0;
+    }
+
+    .empty-hint {
+      color: rgba(15, 23, 42, 0.6);
+      font-size: 13px;
+      padding: 10px 0;
+    }
+  </style>
+</head>
+
+<body class="inventory-body">
+
+  {% set breadcrumb = [
+  {'label': 'SQL Server Main', 'href': '/sqlserver_main'},
+  {'label': 'Environment View', 'active': True}
+  ] %}
+  {% include "_dsx_inventory_header.html" %}
+
+  <main class="container container-xl">
+    <div class="page-head">
+      <div>
+        <h1 class="page-title" style="margin-bottom: 6px;">Inventory Management – Environment View</h1>
+      </div>
+
+      <a class="btn btn-primary" href="{{ url_for('index', from_env='env') }}" style="text-decoration:none;">
+        Open Card View
+      </a>
+    </div>
+
+    <form method="get" action="{{ url_for('environments_summary') }}"
+      style="margin: 12px 0 18px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+      <select name="sql_version" style="padding:8px 10px; border-radius:8px; border:1px solid rgba(15,23,42,0.08);">
+        <option value="">All SQL Versions</option>
+        {% for sv in (sql_versions or []) %}
+        <option value="{{ sv }}" {% if sql_version and sql_version==sv %}selected{% endif %}>{{ sv }}</option>
+        {% endfor %}
+      </select>
+
+      <select name="env" style="padding:8px 10px; border-radius:8px; border:1px solid rgba(15,23,42,0.08);">
+        <option value="">All Environments</option>
+        <option value="test" {% if env=='test' %}selected{% endif %}>Test</option>
+        <option value="prod" {% if env=='prod' %}selected{% endif %}>Prod</option>
+        <option value="dev" {% if env=='dev' %}selected{% endif %}>Dev</option>
+      </select>
+
+      <button class="btn btn-primary" style="padding:8px 12px; font-size:0.9rem;">Apply</button>
+      <a class="btn btn-primary" href="{{ url_for('environments_summary') }}"
+        style="padding:6px 10px; font-size:0.9rem;">Clear</a>
+    </form>
+
+    {% for env_key, env_label in [ ('prod','Prod'),('test','Test'), ('dev','Dev')] %}
+    <section class="env-section">
+      <div class="env-title">
+        <h2>{{ env_label }}</h2>
+        <span class="pill">{{ (env_rows[env_key] or [])|length }} servers</span>
+      </div>
+
+      <div class="table-wrap" style="padding:16px; display:flex; gap:20px; align-items:flex-start;">
+        {% set summary = env_summaries.get(env_key, {}) %}
+        {% set sql_counts = summary.counts_by_sql if summary else [] %}
+
+        {% if not sql_counts %}
+        <div style="color: rgba(15,23,42,0.6);">No servers found in this group.</div>
+        {% else %}
+        <div style="flex:1 1 60%;">
+          <table style="width:100%; border-collapse:collapse;">
+            <thead>
+              <tr>
+                <th style="text-align:left; padding:8px; border-bottom:1px solid rgba(15,23,42,0.06);">SQL Version</th>
+                <th style="text-align:right; padding:8px; border-bottom:1px solid rgba(15,23,42,0.06);">Count</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for sv, c in sql_counts %}
+              {# Build JSON list of servers for this env + sql version #}
+              {% set servers_list = env_rows.get(env_key, []) %}
+              {% set matched = [] %}
+              {% for s in servers_list %}
+              {% if (s.sql_version or '') == sv %}
+              {% set _ = matched.append({
+              'name': s.name,
+              'id': s.id
+              }) %}
+              {% endif %}
+              {% endfor %}
+
+              <tr class="sql-row" data-env="{{ env_label }}" data-envkey="{{ env_key }}" data-sql="{{ sv }}"
+                data-count="{{ c }}" data-servers='{{ matched | tojson | safe }}'>
+                <td style="padding:8px; border-bottom:1px solid rgba(15,23,42,0.04);">
+                  <span>{{ sv }}</span>
+                </td>
+                <td style="padding:8px; text-align:right; border-bottom:1px solid rgba(15,23,42,0.04);">{{ c }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div style="width:320px; flex:0 0 320px;">
+          <canvas id="sqlVersionPie-{{ env_key }}" width="320" height="320"></canvas>
+        </div>
+        {% endif %}
+      </div>
+    </section>
+    {% endfor %}
+
+  </main>
+
+  {% include "_dsx_inventory_footer.html" %}
+
+  <!-- Modal -->
+  <div class="modal-backdrop" id="sqlModal">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="sqlModalTitle">
+      <div class="modal-header">
+        <h3 id="sqlModalTitle">Servers</h3>
+        <button class="modal-close" type="button" id="sqlModalClose" aria-label="Close">×</button>
+      </div>
+      <div class="modal-body">
+        <div id="sqlModalMeta" class="empty-hint" style="padding-bottom:10px;"></div>
+        <div id="sqlModalBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart.js CDN -->
+  <script src="{{ url_for('static', filename='chart.umd.min.js') }}"></script>
+
+
+  <script>
+    // Pie charts
+    (function () {
+      const envs = ['test', 'prod', 'dev'];
+      envs.forEach(envKey => {
+        try {
+          const canvas = document.getElementById(`sqlVersionPie-${envKey}`);
+          if (!canvas) return;
+          const table = canvas.closest('.table-wrap')?.querySelector('table');
+          if (!table) return;
+
+          const labels = [];
+          const values = [];
+          table.querySelectorAll('tbody tr').forEach(tr => {
+            const tds = tr.querySelectorAll('td');
+            if (tds.length >= 2) {
+              labels.push(tds[0].innerText.trim().slice(0,25)+'...');
+              values.push(parseInt(tds[1].innerText.trim()) || 0);
+            }
+          });
+
+          new Chart(canvas.getContext('2d'), {
+            type: 'pie',
+            data: {
+              labels: labels,
+              datasets: [{ data: values, backgroundColor: labels.map((_, i) => `hsl(${(i * 47) % 360} 70% 50%)`) }]
+            },
+            options: {
+              plugins: { legend: { position: 'bottom' } },
+              maintainAspectRatio: false,
+            }
+          });
+        } catch (e) { console.error(e); }
+      });
+    })();
+
+    // Modal popup for SQL version -> server list
+    (function () {
+      const modal = document.getElementById('sqlModal');
+      const closeBtn = document.getElementById('sqlModalClose');
+      const title = document.getElementById('sqlModalTitle');
+      const meta = document.getElementById('sqlModalMeta');
+      const body = document.getElementById('sqlModalBody');
+
+      function openModal() {
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+      }
+      function closeModal() {
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+        body.innerHTML = '';
+        meta.innerHTML = '';
+      }
+
+      closeBtn.addEventListener('click', closeModal);
+      modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+      document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+      document.querySelectorAll('tr.sql-row').forEach(row => {
+        row.addEventListener('click', () => {
+          const envLabel = row.getAttribute('data-env') || '';
+          const envKey = row.getAttribute('data-envkey') || '';
+          const sql = row.getAttribute('data-sql') || '';
+          const count = row.getAttribute('data-count') || '0';
+
+          let servers = [];
+          try { servers = JSON.parse(row.getAttribute('data-servers') || '[]'); } catch (e) { }
+
+          title.textContent = `${envLabel} • SQL ${sql}`;
+
+          if (!servers || servers.length === 0) {
+            body.innerHTML = `<div class="empty-hint">No servers mapped to this SQL version.</div>`;
+          } else {
+            const ul = document.createElement('ul');
+            ul.className = 'modal-list';
+
+            servers.forEach(s => {
+              const li = document.createElement('li');
+              const a = document.createElement('a');
+              a.className = 'server-link';
+              // Keep your existing route + from_page marker
+              a.href = `{{ url_for('server_detail', server_id=0, from_page='env') }}`.replace('/0', `/${s.id}`);
+              a.textContent = s.name;
+              li.appendChild(a);
+              ul.appendChild(li);
+            });
+
+            body.innerHTML = '';
+            body.appendChild(ul);
+          }
+
+          openModal();
+        });
+      });
+    })();
+  </script>
+
+</body>
+
+</html>

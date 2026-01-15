@@ -1,78 +1,78 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
-
+ 
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Create SQL Login | DataSolveX</title>
   <link rel="stylesheet" href="../static/global.css">
   <link rel="stylesheet" href="../static/replication.css">
-
+ 
   <script src="{{ url_for('static', filename='js/jquery-3.6.0.min.js') }}"></script>
-
+ 
   <style>
     /* Sticky footer base layout */
-
+ 
     html,
     body {
-
+ 
       height: 100%;
-
+ 
     }
-
+ 
     body {
-
+ 
       margin: 0;
-
+ 
       min-height: 100vh;
-
+ 
       display: flex;
-
+ 
       flex-direction: column;
-
+ 
     }
-
+ 
     /* Your page content wrapper must grow */
-
+ 
     .page-wrapper,
     main {
-
+ 
       flex: 1;
-
+ 
     }
-
+ 
     /* Footer sticks to bottom */
-
+ 
     .site-footer {
-
+ 
       margin-top: auto;
-
+ 
       padding: 12px 24px;
-
+ 
       border-top: 1px solid rgba(148, 163, 184, 0.4);
-
+ 
       background: #f3f4f6;
-
+ 
       color: #4b5563;
-
+ 
       font-size: 13px;
-
+ 
     }
   </style>
 </head>
-
+ 
 <main>
-
+ 
   <body>
     <header class="app-header">
       <!-- Top Navigation Bar -->
       <nav class="app-nav">
         <div class="app-nav-container">
           <a href="{{ url_for('index') }}" class="app-brand">DataSolveX</a>
-
+ 
         </div>
       </nav>
-
+ 
       <!-- Breadcrumb Bar -->
       <div class="app-breadcrumb">
         <div class="app-breadcrumb-container">
@@ -95,12 +95,12 @@
         </div>
       </div>
     </header>
-
+ 
     <div class="page-wrapper">
       <!-- Form Page Container -->
       <div class="form-page-container">
         <div class="form-panel">
-
+ 
           <!-- Form Panel Header -->
           <div class="form-panel-header">
             <div class="panel-icon">
@@ -111,11 +111,11 @@
             </div>
             <h2>Login Configuration</h2>
           </div>
-
+ 
           <!-- Form Panel Body -->
           <div class="form-panel-body">
             <form id="create-login-form">
-
+ 
               <!-- Server & Database Section -->
               <div class="form-section">
                 <h3 class="form-section-title">Server Configuration</h3>
@@ -127,7 +127,7 @@
                       <span class="form-help">The SQL Server instance to connect to</span>
                     </div>
                   </div>
-
+ 
                   <div class="col-6">
                     <div class="form-group">
                       <label class="form-label">Target Database <span class="required">*</span></label>
@@ -139,7 +139,7 @@
                   </div>
                 </div>
               </div>
-
+ 
               <!-- Login Details Section -->
               <div class="form-section">
                 <h3 class="form-section-title">Login Details</h3>
@@ -154,7 +154,7 @@
                       </div>
                     </div>
                   </div>
-
+ 
                   <div class="col-6">
                     <div class="form-group">
                       <label class="form-label">User Name</label>
@@ -163,14 +163,14 @@
                       <span class="form-help">Automatically synced with Login Name</span>
                     </div>
                   </div>
-
+ 
                   <div class="col-6">
                     <div class="form-group">
                       <label class="form-label">Request ID <span class="required">*</span></label>
                       <input type="text" id="request_id" name="request_id" placeholder="e.g., REQ-2024-001" required />
                     </div>
                   </div>
-
+ 
                   <div class="col-6">
                     <div class="form-group">
                       <label class="form-label">Application <span class="required">*</span></label>
@@ -181,7 +181,7 @@
                   </div>
                 </div>
               </div>
-
+ 
               <!-- Classification Section -->
               <div class="form-section">
                 <h3 class="form-section-title">Classification</h3>
@@ -194,35 +194,40 @@
                         <option value="Dev">Development</option>
                         <option value="Test">Test</option>
                         <option value="Prod">Production</option>
+                        <option value="IFT">IFT</option>
+                        <option value="SVT">SVT</option>
                       </select>
                     </div>
                   </div>
-
+ 
                   <div class="col-6">
                     <div class="form-group">
                       <label class="form-label">Product <span class="required">*</span></label>
                       <select id="product" name="product" required>
                         <option value="">-- Select Product --</option>
-                        <optgroup label="Non-Production">
+ 
+                        <optgroup label="Non-Production" data-env="nonprod">
                           <option value="NON PRD sql id">NON PRD SQL ID</option>
                           <option value="NON PRD service account">NON PRD Service Account</option>
                           <option value="NON PRD NT ID">NON PRD NT ID</option>
                           <option value="NON PRD GMSA service account">NON PRD GMSA Service Account</option>
                           <option value="NON PRD user DL">NON PRD User DL</option>
                         </optgroup>
-                        <optgroup label="Production">
+ 
+                        <optgroup label="Production" data-env="prod">
                           <option value="PRD SQL ID">PRD SQL ID</option>
                           <option value="PRD service account">PRD Service Account</option>
                           <option value="PRD NT ID">PRD NT ID</option>
                           <option value="PRD GMSA service account">PRD GMSA Service Account</option>
                         </optgroup>
-                        <optgroup label="Other">
+ 
+                        <optgroup label="Other" data-env="other">
                           <option value="EPM unit account">EPM Unit Account</option>
                         </optgroup>
                       </select>
                     </div>
                   </div>
-
+ 
                   <div class="col-6">
                     <div class="form-group">
                       <label class="form-label">Type <span class="required">*</span></label>
@@ -275,7 +280,7 @@
                       </select>
                     </div>
                   </div>
-
+ 
                   <div class="col-6">
                     <div class="form-group">
                       <label class="form-label">Ownership <span class="required">*</span></label>
@@ -309,7 +314,7 @@
                   </div>
                 </div>
               </div>
-
+ 
               <!-- Contact Information Section -->
               <div class="form-section">
                 <h3 class="form-section-title">Contact Information</h3>
@@ -320,19 +325,19 @@
                       <input type="text" id="owner_contact" name="owner_contact" placeholder="Email or name" />
                     </div>
                   </div>
-
+ 
                   <div class="col-6">
                     <div class="form-group">
                       <label class="form-label">POC (PM for Application) </label>
                       <select id="poc_select" name="poc_select">
                         <option value="">--Select POC--</option>
                       </select>
-
+ 
                       <input type="text" id="poc_manual" name="poc_manual" placeholder="Enter POC"
                         style="display:none; margin-top:6px;" />
                     </div>
                   </div>
-
+ 
                   <div class="col-12">
                     <div class="form-group">
                       <label class="form-label">ID Information <span class="required">*</span></label>
@@ -344,16 +349,16 @@
                 </div>
               </div>
             </form>
-
+ 
             <!-- Message Display -->
             <div id="message" class="alert mt-4" style="display: none;"></div>
-
+ 
             <!-- Login Details Display -->
             <div id="login-details" class="card-bordered mt-4" style="display: none;">
               <div class="card-body"></div>
             </div>
           </div>
-
+ 
           <!-- Form Panel Footer with Action Buttons -->
           <div class="form-panel-footer">
             <button type="reset" form="create-login-form" class="btn-action-secondary">
@@ -373,12 +378,12 @@
               Create Login
             </button>
           </div>
-
+ 
         </div>
       </div>
     </div>
 </main>
-
+ 
 <footer class="footer">
   <div style="display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap:wrap;">
     <div class="footer-bottom">
@@ -386,9 +391,9 @@
     </div>
   </div>
 </footer>
-
-
-
+ 
+ 
+ 
 <script>
   $('#server_name').on('change', function () {
     let serverName = $(this).val();
@@ -407,7 +412,7 @@
       });
     }
   });
-
+ 
   $('#login_name').on('blur', function () {
     let loginName = $(this).val();
     let serverName = $('#server_name').val();
@@ -426,12 +431,12 @@
       });
     }
   });
-
+ 
   $('#login_name').on('input', function () {
     let loginName = $(this).val();
     $('#user_name').val(loginName);
   });
-
+ 
   $('#create-login-form').on('submit', function (e) {
     e.preventDefault();
     $.ajax({
@@ -442,7 +447,7 @@
         let messageDiv = $('#message');
         let detailsDiv = $('#login-details');
         messageDiv.show();
-
+ 
         if (response.message) {
           messageDiv.removeClass('alert-error').addClass('alert alert-success').html('<span class="alert-icon">✔️</span><div class="alert-content">' + response.message + '</div>');
           detailsDiv.find('.card-body').html('<strong>Login Name:</strong> ' + response.login_name);
@@ -458,132 +463,132 @@
     });
   });
 </script>
-
+ 
 <script>
-
+ 
   function loadPOCs(applicationName) {
-
+ 
     const pocSelect = $('#poc_select');
-
+ 
     const pocManual = $('#poc_manual');
-
+ 
     const pocHelper = $('#poc_helper');
-
+ 
     // Reset both
-
+ 
     pocSelect.empty();
-
+ 
     pocSelect.append('<option value="">-- Select POC --</option>');
-
+ 
     pocManual.val('');
-
+ 
     if (!applicationName || applicationName.trim() === '') {
-
+ 
       // No application → show dropdown empty, hide textbox
-
+ 
       pocSelect.show();
-
+ 
       pocManual.hide();
-
+ 
       pocHelper.text('POCs will be loaded based on Application. If none found, you can type manually.');
-
+ 
       return;
-
+ 
     }
-
+ 
     $.ajax({
-
+ 
       url: '/get-pocs',
-
+ 
       method: 'GET',
-
+ 
       data: { application: applicationName },
-
+ 
       success: function (response) {
-
+ 
         // If we have POCs → use dropdown
-
+ 
         if (response.pocs && response.pocs.length > 0) {
-
+ 
           pocSelect.empty();
-
+ 
           pocSelect.append('<option value="">-- Select POC --</option>');
-
+ 
           $.each(response.pocs, function (index, pocName) {
-
+ 
             pocSelect.append(
-
+ 
               '<option value="' + pocName + '">' + pocName + '</option>'
-
+ 
             );
-
+ 
           });
-
+ 
           // Show dropdown, hide textbox
-
+ 
           pocSelect.show();
-
+ 
           pocManual.hide();
-
+ 
           pocHelper.text('Select a POC for the chosen application.');
-
+ 
         } else {
-
+ 
           // No POCs → hide dropdown, show textbox
-
+ 
           pocSelect.hide();
-
+ 
           pocManual.show();
-
+ 
           pocHelper.text('No POC found for this application. Enter POC manually.');
-
+ 
         }
-
+ 
       },
-
+ 
       error: function () {
-
+ 
         console.error('Failed to load POC list');
-
+ 
         // On error, allow manual entry
-
+ 
         pocSelect.hide();
-
+ 
         pocManual.show();
-
+ 
         pocHelper.text('Error loading POCs. Enter POC manually.');
-
+ 
       }
-
+ 
     });
-
+ 
   }
-
+ 
   let pocLoadTimeout = null;
-
+ 
   $(document).ready(function () {
-
+ 
     $('#application').on('input', function () {
-
+ 
       const appName = $(this).val();
-
+ 
       clearTimeout(pocLoadTimeout);
-
+ 
       pocLoadTimeout = setTimeout(function () {
-
+ 
         loadPOCs(appName);
-
+ 
       }, 400);
-
+ 
     });
-
+ 
   });
 </script>
-
-
-
-
-
+ 
+ 
+ 
+ 
+ 
 <script>
   window.addEventListener('beforeunload', function () {
     const data = JSON.stringify({
@@ -594,7 +599,7 @@
     navigator.sendBeacon('/log-exit', blob);
   });
 </script>
-
+ 
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     const now = new Date().toISOString();
@@ -606,79 +611,120 @@
     });
   });
 </script>
-
+ 
 <script>
-
+ 
   function loadApplications() {
-
+ 
     $.ajax({
-
+ 
       url: '/get-applications',
-
+ 
       method: 'GET',
-
+ 
       success: function (response) {
-
+ 
         // For debugging – see what backend returns
-
+ 
         console.log('get-applications response:', response);
-
+ 
         const appSelect = $('#application');
-
+ 
         appSelect.empty();
-
+ 
         appSelect.append('<option value="">-- Select Application --</option>');
-
+ 
         if (response.applications && response.applications.length > 0) {
-
+ 
           $.each(response.applications, function (index, appName) {
-
+ 
             appSelect.append(
-
+ 
               '<option value="' + appName + '">' + appName + '</option>'
-
+ 
             );
-
+ 
           });
-
+ 
         } else {
-
+ 
           appSelect.append('<option value="">No applications found</option>');
-
+ 
         }
-
+ 
       },
-
+ 
       error: function (xhr, status, error) {
-
+ 
         console.error('Failed to load applications:', status, error);
-
+ 
       }
-
+ 
     });
-
+ 
   }
-
+ 
   $(document).ready(function () {
-
+ 
     console.log('Document ready → loading applications');
-
+ 
     loadApplications();
-
+ 
     // Optional: just to see what user picked
-
+ 
     $('#application').on('change', function () {
-
+ 
       console.log('Selected application:', $(this).val());
-
+ 
     });
-
+ 
   });
 </script>
-
-
-
-
+ 
+<script>
+  (function () {
+    const envSelect = document.getElementById("environment");
+    const productSelect = document.getElementById("product");
+ 
+    const defaultOption = productSelect.querySelector('option[value=""]');
+    const groups = Array.from(productSelect.querySelectorAll("optgroup"));
+ 
+    function renderProductsForEnv(env) {
+      // reset selected product whenever env changes
+      productSelect.value = "";
+ 
+      // clear dropdown and keep only default option
+      productSelect.innerHTML = "";
+      productSelect.appendChild(defaultOption);
+ 
+      // no env selected => keep empty (only default)
+      if (!env) return;
+ 
+      const isNonProdEnv = (env === "Dev" || env === "Test" || env === "IFT" || env === "SVT");
+      const isProdEnv = (env === "Prod");
+ 
+      groups.forEach(g => {
+        const tag = g.getAttribute("data-env"); // nonprod | prod | other
+ 
+        // YOUR EXACT RULES:
+        // Dev/Test => show nonprod + other
+        // Prod => show prod only
+        const allowed =
+          (isNonProdEnv && (tag === "nonprod" || tag === "other")) ||
+          (isProdEnv && tag === "prod");
+ 
+        if (allowed) productSelect.appendChild(g);
+      });
+    }
+ 
+    envSelect.addEventListener("change", () => renderProductsForEnv(envSelect.value));
+    document.addEventListener("DOMContentLoaded", () => renderProductsForEnv(envSelect.value));
+  })();
+</script>
+ 
+<script src="/static/js/page_exit_beacon.js" defer ></script>
+ 
 </body>
-
+ 
 </html>
+ 

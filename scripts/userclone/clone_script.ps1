@@ -5,9 +5,11 @@ param(
     [string]$LoggingDB,
     [string]$Mode,        # "Single" or "Multiple"
     [string]$UserPair,    # "old,new"
-    [string]$UserFile     # path to .txt (for multiple)
+    [string]$UserFile,     # path to .txt (for multiple)
+    [string]$ExecutedBy
 )
 
+Write-Host "ExecutedBy (from web): $ExecutedBy"
 $ErrorActionPreference = 'Stop'
 
 function Emit-Progress {
@@ -215,7 +217,7 @@ END
 
         $escapedOldLogin = $oldLogin -replace "'", "''"
         $escapedNewLogin = $newLogin -replace "'", "''"
-        $whoCreated      = $env:USERNAME
+        $whoCreated      = $executedby  
 
         # Extra server-level check for safety (should normally pass because of pre-check)
         $preCheckCmd = $connection.CreateCommand()
@@ -364,56 +366,72 @@ BEGIN
         EXEC sp_executesql @RoleSQL;
 
         DECLARE @PermissionSQL NVARCHAR(MAX) = '
-            USE [' + @DBName + '];
-            SELECT dp.state_desc,
-                    dp.permission_name,
-                    COALESCE(sc.name + ''.'' + so.name, ''DATABASE'') AS ObjectName,
-                    COALESCE(so.type_desc, ''DATABASE'') AS ObjectType,
-                    SUSER_NAME(dp.grantor_principal_id) AS GrantedBy
-            FROM sys.database_permissions dp
-            JOIN sys.database_principals du ON dp.grantee_principal_id = du.principal_id
-            LEFT JOIN sys.objects so ON dp.major_id = so.object_id
-            LEFT JOIN sys.schemas sc ON so.schema_id = sc.schema_id
-            WHERE du.name = ''' + @UserName + ''';
-        ';
+    USE [' + @DBName + '];
+    SELECT
+        dp.state_desc,
+        dp.permission_name,
+        dp.class_desc,
+        CASE
+            WHEN dp.class_desc = ''DATABASE'' THEN ''DATABASE''
+            WHEN dp.class_desc = ''SCHEMA'' THEN sc.name
+            WHEN dp.class_desc = ''OBJECT_OR_COLUMN'' THEN sc.name + ''.'' + so.name
+        END AS ObjectName,
+        CASE
+            WHEN dp.class_desc = ''DATABASE'' THEN ''DATABASE''
+            WHEN dp.class_desc = ''SCHEMA'' THEN ''SCHEMA''
+            ELSE so.type_desc
+        END AS ObjectType,
+        SUSER_NAME(dp.grantor_principal_id) AS GrantedBy
+    FROM sys.database_permissions dp
+    JOIN sys.database_principals du
+        ON dp.grantee_principal_id = du.principal_id
+    LEFT JOIN sys.objects so
+        ON dp.class_desc = ''OBJECT_OR_COLUMN''
+       AND dp.major_id = so.object_id
+    LEFT JOIN sys.schemas sc
+        ON (dp.class_desc = ''SCHEMA'' AND dp.major_id = sc.schema_id)
+        OR so.schema_id = sc.schema_id
+    WHERE du.name = ''' + @UserName + ''';
+';
 
         CREATE TABLE #Permissions (
-            PermissionState NVARCHAR(20),
-            PermissionName NVARCHAR(100),
-            ObjectName NVARCHAR(255),
-            ObjectType NVARCHAR(50),
-            GrantedBy NVARCHAR(100)
-        );
+    PermissionState NVARCHAR(20),
+    PermissionName NVARCHAR(100),
+    ClassDesc NVARCHAR(30),
+    ObjectName NVARCHAR(255),
+    ObjectType NVARCHAR(50),
+    GrantedBy NVARCHAR(100)
+);
 
         INSERT INTO #Permissions EXEC sp_executesql @PermissionSQL;
 
-        DECLARE @PermissionState NVARCHAR(20), @PermissionName NVARCHAR(100), @ObjectName NVARCHAR(255), @ObjectType NVARCHAR(50), @GrantedBy NVARCHAR(100);
-
-        DECLARE PermissionCursor CURSOR FOR
-            SELECT PermissionState, PermissionName, ObjectName, ObjectType, GrantedBy FROM #Permissions;
-
+        DECLARE @PermissionState NVARCHAR(20),
+        @PermissionName NVARCHAR(100),
+        @ClassDesc NVARCHAR(30),
+        @ObjectName NVARCHAR(255),
+        @ObjectType NVARCHAR(50),
+        @GrantedBy NVARCHAR(100);
+DECLARE PermissionCursor CURSOR FOR SELECT PermissionState, PermissionName, ClassDesc, ObjectName, ObjectType, GrantedBy
+    FROM #Permissions;
         OPEN PermissionCursor;
-        FETCH NEXT FROM PermissionCursor INTO @PermissionState, @PermissionName, @ObjectName, @ObjectType, @GrantedBy;
+        FETCH NEXT FROM PermissionCursor INTO @PermissionState, @PermissionName,  @ClassDesc,@ObjectName, @ObjectType, @GrantedBy;
 
         WHILE @@FETCH_STATUS = 0
         BEGIN
 
             IF @PermissionState = 'GRANT'
                 SET @SQL = 'USE [' + @DBName + ']; GRANT ' + @PermissionName + ' ON ' +
-                    CASE WHEN @ObjectName = 'DATABASE' THEN 'DATABASE::[' + @DBName + ']'
-                         ELSE 'OBJECT::[' + REPLACE(@ObjectName, '.', '].[') + ']' END +
+                    CASE WHEN @ClassDesc = 'DATABASE'THEN 'DATABASE::[' + @DBName + ']' WHEN @ClassDesc = 'SCHEMA' THEN 'SCHEMA::[' + @ObjectName + ']'ELSE'OBJECT::[' + REPLACE(@ObjectName, '.', '].[') + ']' END +
                     ' TO [' + @NewLogin + '];';
 
             ELSE IF @PermissionState = 'DENY'
                 SET @SQL = 'USE [' + @DBName + ']; DENY ' + @PermissionName + ' ON ' +
-                    CASE WHEN @ObjectName = 'DATABASE' THEN 'DATABASE::[' + @DBName + ']'
-                         ELSE 'OBJECT::[' + REPLACE(@ObjectName, '.', '].[') + ']' END +
+                    CASE WHEN @ClassDesc = 'DATABASE' THEN 'DATABASE::[' + @DBName + ']' WHEN @ClassDesc = 'SCHEMA' THEN 'SCHEMA::[' + @ObjectName + ']' ELSE'OBJECT::[' + REPLACE(@ObjectName, '.', '].[') + ']' END +
                     ' TO [' + @NewLogin + '];';
 
             ELSE IF @PermissionState = 'REVOKE'
                 SET @SQL = 'USE [' + @DBName + ']; REVOKE ' + @PermissionName + ' ON ' +
-                    CASE WHEN @ObjectName = 'DATABASE' THEN 'DATABASE::[' + @DBName + ']'
-                         ELSE 'OBJECT::[' + REPLACE(@ObjectName, '.', '].[') + ']' END +
+                    CASE WHEN @ClassDesc = 'DATABASE' THEN 'DATABASE::[' + @DBName + ']'  WHEN @ClassDesc = 'SCHEMA' THEN 'SCHEMA::[' + @ObjectName + ']' ELSE'OBJECT::[' + REPLACE(@ObjectName, '.', '].[') + ']' END +
                     ' FROM [' + @NewLogin + '];';
 
             EXEC sp_executesql @SQL;
@@ -421,7 +439,7 @@ BEGIN
             INSERT INTO ClonedUserPermissions (DatabaseName, ClonedUser, PermissionState, PermissionName, ObjectName, ObjectType, GrantedBy)
             VALUES (@DBName, @NewLogin, @PermissionState, @PermissionName, @ObjectName, @ObjectType, @GrantedBy);
 
-            FETCH NEXT FROM PermissionCursor INTO @PermissionState, @PermissionName, @ObjectName, @ObjectType, @GrantedBy;
+            FETCH NEXT FROM PermissionCursor INTO @PermissionState, @PermissionName, @ClassDesc,@ObjectName, @ObjectType, @GrantedBy;
         END
 
         CLOSE PermissionCursor;
@@ -528,23 +546,23 @@ DECLARE @result NVARCHAR(20);
 
 SET @sql = N'
 SELECT CASE WHEN NOT EXISTS (
-    SELECT role_principal_id, member_principal_id
+    SELECT role_principal_id
     FROM sys.database_role_members rm
     JOIN sys.database_principals dp ON rm.member_principal_id = dp.principal_id
     WHERE dp.name = N''$escapedOldLogin''
     EXCEPT
-    SELECT role_principal_id, member_principal_id
+    SELECT role_principal_id
     FROM sys.database_role_members rm
     JOIN sys.database_principals dp ON rm.member_principal_id = dp.principal_id
     WHERE dp.name = N''$escapedNewLogin''
 )
 AND NOT EXISTS (
-    SELECT role_principal_id, member_principal_id
+    SELECT role_principal_id
     FROM sys.database_role_members rm
     JOIN sys.database_principals dp ON rm.member_principal_id = dp.principal_id
     WHERE dp.name = N''$escapedNewLogin''
     EXCEPT
-    SELECT role_principal_id, member_principal_id
+    SELECT role_principal_id
     FROM sys.database_role_members rm
     JOIN sys.database_principals dp ON rm.member_principal_id = dp.principal_id
     WHERE dp.name = N''$escapedOldLogin''

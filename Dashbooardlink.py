@@ -11,7 +11,7 @@ conn_str = (
 )
 conn = pyodbc.connect(conn_str)
  
- 2️⃣ Flask app
+#2️⃣ Flask app
 app = Flask(__name__)
  
 # 3️⃣ Shared styling template

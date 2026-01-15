@@ -2,7 +2,7 @@
 import os
 import io
 import csv 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 import pyodbc
 from flask import (
@@ -15,6 +15,7 @@ from flask import (
     Response,
     make_response,
     send_file,
+    jsonify,
 )
 from dotenv import load_dotenv
 
@@ -24,6 +25,7 @@ from .db_detail import (
     snapshot_db_metadata,
     get_db_metadata,
     get_db_object_summary,
+    get_query_store_info,
 )
 from .server_detail import (
     get_server_by_id,
@@ -44,6 +46,41 @@ INV_DB_PASSWORD = os.getenv("INV_DB_PASSWORD")
 INV_DB_TRUSTED = (os.getenv("INV_DB_TRUSTED", "YES").upper() == "YES")
 
 app = Flask(__name__)
+
+
+IST = timezone(timedelta(hours=5, minutes=30))
+
+def _get_helper_sql_conn():
+    """Connection for page_access_logs (shared helper DB)."""
+    Helper_server = os.getenv("Helper_server")
+    Helper_database = os.getenv("Helper_database")
+    conn_str = (
+        "DRIVER={ODBC Driver 17 for SQL Server};"
+        f"SERVER={Helper_server};"
+        f"DATABASE={Helper_database};"
+        "Trusted_Connection=yes;"
+    )
+    return pyodbc.connect(conn_str)
+
+def _normalize_page_path(p: str) -> str:
+    if not p:
+        return "/"
+    p = p.strip().lower()
+    if p.endswith("/"):
+        p = p[:-1]
+    if p == "":
+        p = "/"
+    # mirror main app normalize: add .html if no extension and not root
+    if p != "/" and "." not in p:
+        p += ".html"
+    return p
+
+def _client_ip() -> str:
+    forwarded = request.environ.get("HTTP_X_FORWARDED_FOR")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.remote_addr or "unknown"
+
 
 
 # ---------- PLAN AVAILABILITY (for disabling Download Plan button) ----------
@@ -157,12 +194,13 @@ WITH ServerSnapshot AS (
         CAST(SERVERPROPERTY('Edition')        AS NVARCHAR(128)) AS SQLEdition,
         (SELECT TOP (1) windows_release 
          FROM sys.dm_os_windows_info) AS OSVersion,
+        CAST(SERVERPROPERTY('ResourceLastUpdateDateTime') AS DATETIME2) AS LastCUUpdated,
         (SELECT CONVERT(DATETIME2, sqlserver_start_time)
          FROM sys.dm_os_sys_info) AS LastRestart,
         (SELECT COUNT(*)
          FROM sys.databases
          WHERE database_id > 4) AS TotalDatabases,
-        (SELECT CONVERT(DECIMAL(18,2), SUM(size) * 8.0 / 1024 / 1024)
+        (SELECT CAST(SUM(CAST(size AS BIGINT)) * 8.0 / 1024 / 1024 AS DECIMAL(38,2)) AS total_size_gb
          FROM sys.master_files
          WHERE database_id > 4) AS TotalSizeGB,
         SYSDATETIME() AS LastScan,
@@ -181,7 +219,8 @@ WHEN MATCHED THEN
         tgt.TotalDatabases = src.TotalDatabases,
         tgt.TotalSizeGB    = src.TotalSizeGB,
         tgt.LastScan       = src.LastScan,
-        tgt.LastUpdated    = src.LastUpdated
+        tgt.LastUpdated    = src.LastUpdated,
+        tgt.LastCUUpdated  = src.LastCUUpdated
 WHEN NOT MATCHED BY TARGET THEN
     INSERT (
         ServerID,
@@ -205,7 +244,8 @@ WHEN NOT MATCHED BY TARGET THEN
         src.TotalDatabases,
         src.TotalSizeGB,
         src.LastScan,
-        src.LastUpdated
+        src.LastUpdated,
+        src.LastCUUpdated
     );
 """
 ##change
@@ -263,6 +303,12 @@ def refresh_all_server_info():
             except Exception:
                 os_version = None
 
+            try:
+                row = tcur.execute("SELECT CAST(SERVERPROPERTY('ResourceLastUpdateDateTime') AS DATETIME2);").fetchone()
+                last_cu_updated = row[0] if row else None
+            except Exception:
+                last_cu_updated = None
+
             row = tcur.execute("SELECT CONVERT(DATETIME2, sqlserver_start_time) FROM sys.dm_os_sys_info;").fetchone()
             last_restart = row[0] if row else None
 
@@ -270,7 +316,7 @@ def refresh_all_server_info():
             total_databases = int(row[0] or 0) if row else 0
 
             row = tcur.execute(
-                "SELECT CONVERT(DECIMAL(18,2), SUM(size) * 8.0 / 1024 / 1024) FROM sys.master_files WHERE database_id > 4;"
+                "SELECT CAST(SUM(CAST(size AS BIGINT)) * 8.0 / 1024 / 1024 AS DECIMAL(38,2)) AS total_size_gb FROM sys.master_files WHERE database_id > 4;"
             ).fetchone()
             total_size_gb = float(row[0] or 0) if row else 0.0
 
@@ -293,15 +339,16 @@ def refresh_all_server_info():
                     TotalDatabases = ?,
                     TotalSizeGB    = ?,
                     LastScan       = SYSDATETIME(),
-                    LastUpdated    = SYSDATETIME()
+                    LastUpdated    = SYSDATETIME(),
+                    LastCUUpdated  = ?
             WHEN NOT MATCHED THEN
-                INSERT (ServerID, Status, SQLVersion, SQLEdition, OSVersion, LastRestart, TotalDatabases, TotalSizeGB, LastScan, LastUpdated)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, SYSDATETIME(), SYSDATETIME());
+                INSERT (ServerID, Status, SQLVersion, SQLEdition, OSVersion, LastRestart, TotalDatabases, TotalSizeGB, LastScan, LastUpdated, LastCUUpdated)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, SYSDATETIME(), SYSDATETIME(), ?);
             """,
             (
                 server_id,
-                status, sql_version, sql_edition, os_version, last_restart, total_databases, total_size_gb,
-                server_id, status, sql_version, sql_edition, os_version, last_restart, total_databases, total_size_gb,
+                status, sql_version, sql_edition, os_version, last_restart, total_databases, total_size_gb, last_cu_updated,
+                server_id, status, sql_version, sql_edition, os_version, last_restart, total_databases, total_size_gb, last_cu_updated,
             ),
         )
 
@@ -321,6 +368,7 @@ def get_servers(sql_version=None, windows_version=None):
         SELECT
             sl.ID              AS id,
             sl.ServerName      AS name,
+            sl.Environment      AS environment,
             si.Status          AS status,
             si.SQLVersion      AS sql_version,
             si.SQLEdition      AS sql_edition,
@@ -348,27 +396,222 @@ def get_servers(sql_version=None, windows_version=None):
 
     query += " ORDER BY sl.ServerName;"
 
-    cur.execute(query, params)
-
     servers = []
-    for row in cur.fetchall():
-        servers.append(
+    try:
+        cur.execute(query, params)
+        for row in cur.fetchall():
+            servers.append(
+                {
+                    "id": row.id,
+                    "name": row.name,
+                    "status": row.status or "UNKNOWN",
+                    "sql_version": row.sql_version,
+                    "sql_edition": row.sql_edition,
+                    "os_version": row.os_version,
+                    "total_databases": row.total_databases or 0,
+                    "total_size_gb": float(row.total_size_gb or 0),
+                    "environment": getattr(row, 'environment', None),
+                    "last_scan": row.last_scan,
+                    "last_restart": row.last_restart,
+                }
+            )
+        conn.close()
+    except Exception:
+        # Fallback if Environment column doesn't exist — run without it and classify by name
+        query2 = query.replace("sl.Environment      AS environment,\n", "")
+        cur.execute(query2, params)
+        for row in cur.fetchall():
+            env = classify_environment(row.name)
+            servers.append(
+                {
+                    "id": row.id,
+                    "name": row.name,
+                    "status": row.status or "UNKNOWN",
+                    "sql_version": row.sql_version,
+                    "sql_edition": row.sql_edition,
+                    "os_version": row.os_version,
+                    "total_databases": row.total_databases or 0,
+                    "total_size_gb": float(row.total_size_gb or 0),
+                    "environment": env,
+                    "last_scan": row.last_scan,
+                    "last_restart": row.last_restart,
+                }
+            )
+        conn.close()
+    # Enrich each server with drive info (multiple drives) by querying the instance.
+    for s in servers:
+        s["drives"] = []
+        try:
+            # Query the target instance for volumes where SQL has files
+            tconn = get_sql_connection(s["name"], "master")
+            tcur = tconn.cursor()
+            try:
+                tcur.execute(
+                    """
+                    ;WITH drives AS (
+                        SELECT DISTINCT
+                            vs.volume_mount_point,
+                            vs.logical_volume_name,
+                            vs.total_bytes,
+                            vs.available_bytes
+                        FROM sys.master_files AS mf
+                        CROSS APPLY sys.dm_os_volume_stats(mf.database_id, mf.file_id) AS vs
+                    )
+                    SELECT
+                        volume_mount_point,
+                        logical_volume_name,
+                        total_bytes,
+                        available_bytes
+                    FROM drives;
+                    """
+                )
+                for d in tcur.fetchall():
+                    total_gb = (d.total_bytes or 0) / 1024.0 / 1024.0 / 1024.0
+                    free_gb = (d.available_bytes or 0) / 1024.0 / 1024.0 / 1024.0
+                    free_pct = None
+                    if total_gb > 0:
+                        free_pct = round((free_gb / total_gb) * 100, 1)
+                    s["drives"].append({
+                        "mount_point": d.volume_mount_point,
+                        "name": d.logical_volume_name,
+                        "total_gb": total_gb,
+                        "free_gb": free_gb,
+                        "free_pct": free_pct,
+                    })
+            except Exception:
+                s["drives"] = []
+            finally:
+                try:
+                    tconn.close()
+                except Exception:
+                    pass
+        except Exception:
+            # unreachable / offline
+            s["drives"] = []
+
+    return servers
+
+
+# ---------- ENVIRONMENT SUMMARY HELPERS ----------
+
+def classify_environment(server_name: str) -> str:
+    """Best-effort environment classifier from server name.
+
+    Uses simple naming heuristics (because no explicit env column exists).
+    """
+    n = (server_name or "").lower()
+    if "prod" in n or "production" in n:
+        return "prod"
+    if "dev" in n or "development" in n:
+        return "dev"
+    if "test" in n or "uat" in n or "qa" in n:
+        return "test"
+    # Default bucket
+    return "test"
+
+
+def fetch_cu_details(server_name: str) -> dict:
+    """Fetch CU / update details live from a target SQL Server.
+
+    Returns keys:
+      - product_version
+      - cu_level
+      - cu_reference
+      - error
+
+    Notes:
+    - SQL Server does not reliably expose the *install date* of a CU via a simple DMV.
+      We surface a "checked_at" timestamp elsewhere (from ServerInfo.LastUpdated/LastScan).
+    """
+    details = {
+        "product_version": None,
+        "cu_level": None,
+        "cu_reference": None,
+        "error": None,
+    }
+
+    try:
+        conn = get_sql_connection(server_name, "master")
+        cur = conn.cursor()
+        row = cur.execute(
+            """
+            SELECT
+                CAST(SERVERPROPERTY('ProductVersion') AS NVARCHAR(50)) AS product_version,
+                CAST(SERVERPROPERTY('ProductLevel') AS NVARCHAR(50)) AS product_level,
+                CAST(SERVERPROPERTY('ProductUpdateLevel') AS NVARCHAR(50)) AS product_update_level,
+                CAST(SERVERPROPERTY('ProductUpdateReference') AS NVARCHAR(255)) AS product_update_reference;
+            """
+        ).fetchone()
+        if row:
+            details["product_version"] = row.product_version
+            # Prefer ProductUpdateLevel when available (often CUxx), else ProductLevel.
+            details["cu_level"] = row.product_update_level or row.product_level
+            details["cu_reference"] = row.product_update_reference
+        conn.close()
+    except Exception as e:
+        details["error"] = str(e)
+
+    return details
+
+
+def get_environment_summary_rows() -> dict:
+    """Return servers grouped by env with columns required for the summary page.
+
+    Source of truth: dbo.ServerList.Environment (prod/test/dev).
+    """
+    conn = get_inventory_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        """
+        SELECT
+            sl.ID AS id,
+            sl.ServerName AS name,
+            sl.Environment AS environment,
+            si.Status AS status,
+            si.OSVersion AS os_version,
+            si.LastCUUpdated AS last_cu_updated,
+            si.SQLVersion AS sql_version,
+            si.LastUpdated AS last_updated,
+            si.LastScan AS last_scan
+        FROM dbo.ServerList AS sl
+        LEFT JOIN dbo.ServerInfo AS si
+            ON si.ServerID = sl.ID
+        ORDER BY sl.ServerName;
+        """
+    )
+
+    rows = {"test": [], "prod": [], "dev": []}
+
+    for r in cur.fetchall():
+        # ✅ Use table column as truth
+        env = (getattr(r, "environment", None) or "").strip().lower()
+
+        # Safety: handle NULL/garbage values
+        if env not in ("test", "prod", "dev"):
+            env = "test"   # choose your default bucket
+
+        cu = fetch_cu_details(r.name)
+
+        checked_at = getattr(r, "last_cu_updated", None) or r.last_scan or r.last_updated
+
+        rows[env].append(
             {
-                "id": row.id,
-                "name": row.name,
-                "status": row.status or "UNKNOWN",
-                "sql_version": row.sql_version,
-                "sql_edition": row.sql_edition,
-                "os_version": row.os_version,
-                "total_databases": row.total_databases or 0,
-                "total_size_gb": float(row.total_size_gb or 0),
-                "last_scan": row.last_scan,
-                "last_restart": row.last_restart,
+                "id": r.id,
+                "name": r.name,
+                "status": (r.status or "UNKNOWN"),
+                "os_version": r.os_version,
+                "sql_version": r.sql_version,
+                "cu_level": cu.get("cu_level"),
+                "cu_reference": cu.get("cu_reference"),
+                "cu_checked_at": checked_at,
+                "cu_error": cu.get("error"),
             }
         )
 
     conn.close()
-    return servers
+    return rows
+
 
 
 # ---------- DB OBJECT INVENTORY HELPERS ----------
@@ -538,6 +781,140 @@ def index():
     )
 
 
+@app.route("/environments")
+def environments_summary():
+    """Environment-wise server table view (test/prod/dev).
+
+    Supports optional GET filters:
+      - search: substring match against server name
+      - windows_version: exact match on OSVersion
+      - status: exact match on Status (ONLINE/OFFLINE/etc)
+      - cu_level: exact match on computed CU level
+    """
+    # Read filters from query string
+    search = (request.args.get("search") or "").strip()
+    windows_filter = (request.args.get("windows_version") or "").strip()
+    status_filter = (request.args.get("status") or "").strip()
+    cu_filter = (request.args.get("cu_level") or "").strip()
+    env_filter = (request.args.get("env") or "").strip().lower()
+    sql_version_filter = (request.args.get("sql_version") or "").strip()
+
+    env_rows = get_environment_summary_rows()
+
+    # Collect available Windows versions, statuses and SQL versions from ServerInfo for filter options
+    conn = get_inventory_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT DISTINCT OSVersion FROM dbo.ServerInfo WHERE OSVersion IS NOT NULL ORDER BY OSVersion;")
+    windows_versions = [r.OSVersion for r in cur.fetchall() if getattr(r, 'OSVersion', None)]
+    cur.execute("SELECT DISTINCT ISNULL(Status,'UNKNOWN') AS Status FROM dbo.ServerInfo ORDER BY Status;")
+    statuses = [r.Status for r in cur.fetchall() if getattr(r, 'Status', None)]
+    cur.execute("SELECT DISTINCT SQLVersion FROM dbo.ServerInfo WHERE SQLVersion IS NOT NULL ORDER BY SQLVersion;")
+    sql_versions = [r.SQLVersion for r in cur.fetchall() if getattr(r, 'SQLVersion', None)]
+    conn.close()
+
+    # Collect CU level options from the live CU fetch results in env_rows
+    cu_levels_set = set()
+    for bucket in env_rows.values():
+        for s in bucket:
+            lvl = s.get("cu_level")
+            if lvl:
+                cu_levels_set.add(lvl)
+    cu_levels = sorted(cu_levels_set)
+
+    # Apply filters/search (case-insensitive search for server name)
+    def _match(s):
+        if search:
+            if search.lower() not in (s.get("name") or "").lower():
+                return False
+        if windows_filter:
+            if (s.get("os_version") or "") != windows_filter:
+                return False
+        if status_filter:
+            if (s.get("status") or "").upper() != status_filter.upper():
+                return False
+        if cu_filter:
+            if (s.get("cu_level") or "") != cu_filter:
+                return False
+        if sql_version_filter:
+            if sql_version_filter.lower() not in ((s.get("sql_version") or "").lower()):
+                return False
+        return True
+
+    filtered = {"test": [], "prod": [], "dev": []}
+    for k, bucket in env_rows.items():
+        for s in bucket:
+            if _match(s):
+                filtered[k].append(s)
+
+    # If an environment filter was provided, only show that bucket
+    visible_envs = ["test", "prod", "dev"]
+    if env_filter in visible_envs:
+        filtered = {env_filter: filtered.get(env_filter, [])}
+        visible_envs = [env_filter]
+
+    # Build per-environment summaries (counts by windows version + SQL version)
+    env_summaries = {}
+    # For consistent ordering, use windows_versions and sql_versions collected earlier
+    for env_key in ["test", "prod", "dev"]:
+        raw_bucket = env_rows.get(env_key, [])  # overall (unfiltered) bucket
+        bucket = filtered.get(env_key, [])      # filtered bucket
+
+        # overall total (unfiltered)
+        overall_total = len(raw_bucket)
+
+        # filtered totals
+        total_filtered = len(bucket)
+
+        # counts by windows in filtered bucket
+        w_counts = {}
+        for s in bucket:
+            w = s.get("os_version") or "N/A"
+            w_counts[w] = w_counts.get(w, 0) + 1
+        ordered_w = []
+        for w in windows_versions:
+            if w in w_counts:
+                ordered_w.append((w, w_counts[w]))
+        for w, c in w_counts.items():
+            if w not in windows_versions:
+                ordered_w.append((w, c))
+
+        # counts by SQL version in filtered bucket
+        s_counts = {}
+        for s in bucket:
+            sv = s.get("sql_version") or "N/A"
+            s_counts[sv] = s_counts.get(sv, 0) + 1
+        ordered_s = []
+        for sv in sql_versions:
+            if sv in s_counts:
+                ordered_s.append((sv, s_counts[sv]))
+        for sv, c in s_counts.items():
+            if sv not in sql_versions:
+                ordered_s.append((sv, c))
+
+        env_summaries[env_key] = {
+            "counts_by_windows": ordered_w,
+            "counts_by_sql": ordered_s,
+            "total_filtered": total_filtered,
+            "overall_total": overall_total,
+        }
+
+    return render_template(
+        "environments.html",
+        env_rows=filtered,
+        windows_versions=windows_versions,
+        statuses=statuses,
+        cu_levels=cu_levels,
+        search=search,
+        windows_version=windows_filter,
+        status=status_filter,
+        cu_level=cu_filter,
+        env=env_filter,
+        sql_version=sql_version_filter,
+        sql_versions=sql_versions,
+        env_summaries=env_summaries,
+    )
+
+
 @app.route("/refresh")
 def refresh():
     refresh_all_server_info()
@@ -577,12 +954,31 @@ def db_detail(server_id: int, db_name: str):
         abort(404)
 
     obj_summary = get_db_object_summary(db_name, server_name=server['name'])
+    # Query Store info (live)
+    query_store = get_query_store_info(server['name'], db_name)
+    # Backup sizes (full/diff/log)
+    backup_sizes = None
+    try:
+        from .db_detail import get_last_backup_sizes
+        backup_sizes = get_last_backup_sizes(server['name'], db_name)
+    except Exception:
+        backup_sizes = None
+    # AG info (commit mode / sync state)
+    ag_info = None
+    try:
+        from .db_detail import get_ag_info
+        ag_info = get_ag_info(server['name'], db_name)
+    except Exception:
+        ag_info = None
 
     return render_template(
         "db.html",
         server=server,
         db=db_meta,
         obj_summary=obj_summary,
+        query_store=query_store,
+        backup_sizes=backup_sizes,
+        ag_info=ag_info,
     )
 
 
@@ -1226,41 +1622,291 @@ def download_sqlplan(server_id: int, db_name: str):
         max_age=0,
     )
 
+# -------------------------------
+# Connection test (TARGET server)
+# -------------------------------
+
+def _build_target_conn_str(server_name: str, database: str = "master") -> str:
+    """Build a safe-ish ODBC connection string for a target SQL Server."""
+    # Add login timeout to avoid hanging your UI when a server is dead/unreachable.
+    base = (
+        "DRIVER={ODBC Driver 17 for SQL Server};"
+        f"SERVER={server_name};"
+        f"DATABASE={database};"
+        "Connection Timeout=5;"
+    )
+
+    if INV_DB_TRUSTED:
+        return base + "Trusted_Connection=yes;"
+    else:
+        if not INV_DB_USER or not INV_DB_PASSWORD:
+            raise RuntimeError("Using SQL auth but INV_DB_USER / INV_DB_PASSWORD not set")
+        return base + f"UID={INV_DB_USER};PWD={INV_DB_PASSWORD};"
+
+
+def test_target_sql_server(server_name: str) -> tuple[bool, str | None, dict]:
+    """
+    Returns: (ok, error_message, details)
+    details can include version, edition, etc.
+    """
+    server_name = (server_name or "").strip()
+    if not server_name:
+        return False, "server_name required", {}
+
+    try:
+        conn_str = _build_target_conn_str(server_name, "master")
+        conn = pyodbc.connect(conn_str, timeout=5)  # login timeout
+        try:
+            cur = conn.cursor()
+            # Smallest possible “is it alive” query
+            cur.execute("SELECT @@SERVERNAME AS server_name;")
+            row1 = cur.fetchone()
+
+            cur.execute("""
+                SELECT
+                    CAST(SERVERPROPERTY('ProductVersion') AS NVARCHAR(50)) AS product_version,
+                    CAST(SERVERPROPERTY('ProductLevel')   AS NVARCHAR(50)) AS product_level,
+                    CAST(SERVERPROPERTY('Edition')        AS NVARCHAR(128)) AS edition;
+            """)
+            row2 = cur.fetchone()
+
+            details = {
+                "resolved_server_name": (row1.server_name if row1 else None),
+                "product_version": (row2.product_version if row2 else None),
+                "product_level": (row2.product_level if row2 else None),
+                "edition": (row2.edition if row2 else None),
+            }
+            return True, None, details
+        finally:
+            conn.close()
+
+    except Exception as ex:
+        # Don’t leak insane driver internals; keep it readable
+        msg = str(ex)
+        return False, msg, {}
+
+
+@app.route("/server/test", methods=["POST"])
+def server_test():
+    """
+    POST JSON: { "server_name": "myserver\\inst" }
+    Returns JSON:
+      { status: "ok", details: {...} } 200
+      { status: "error", message: "..." } 422
+    """
+    if not request.is_json:
+        return jsonify({"status": "error", "message": "JSON body required"}), 400
+
+    data = request.get_json() or {}
+    server_name = (data.get("server_name") or "").strip()
+
+    ok, err, details = test_target_sql_server(server_name)
+    if not ok:
+        return jsonify({"status": "error", "message": err}), 422
+
+    return jsonify({"status": "ok", "details": details}), 200
+
+
+@app.route("/server/add", methods=["POST"])
+def add_server():
+    """
+    Add a server to dbo.ServerList ONLY IF it is reachable.
+    Expects JSON { "server_name": "<name>", "environment": "prod|test|dev|"" }.
+    """
+    data = None
+    server_env = None
+
+    if request.is_json:
+        data = request.get_json() or {}
+        server_name = (data.get("server_name") or "").strip()
+        server_env = (data.get("environment") or "").strip().lower()
+    else:
+        server_name = (request.form.get("server_name") or request.values.get("server_name") or "").strip()
+        server_env = (request.form.get("environment") or request.values.get("environment") or "").strip().lower()
+
+    if server_env not in ("", "prod", "test", "dev"):
+        server_env = ""
+
+    if not server_name:
+        return jsonify({"status": "error", "message": "server_name required"}), 400
+
+    # ✅ HARD GATE: test connection BEFORE inserting
+    ok, err, details = test_target_sql_server(server_name)
+    if not ok:
+        return jsonify({
+            "status": "error",
+            "message": f"Connection test failed. Server not added. Reason: {err}"
+        }), 422
+
+    conn = get_inventory_connection()
+    cur = conn.cursor()
+    row = None
+
+    try:
+        # Try environment-aware insert/update
+        cur.execute(
+            """
+            IF NOT EXISTS (SELECT 1 FROM dbo.ServerList WHERE ServerName = ?)
+            BEGIN
+                INSERT INTO dbo.ServerList (ServerName, Environment) VALUES (?, ?);
+            END
+            ELSE
+            BEGIN
+                UPDATE dbo.ServerList SET Environment = ? WHERE ServerName = ?;
+            END;
+            """,
+            (server_name, server_name, server_env or None, server_env or None, server_name),
+        )
+    except Exception:
+        # Fallback if Environment column doesn’t exist
+        try:
+            cur.execute(
+                """
+                IF NOT EXISTS (SELECT 1 FROM dbo.ServerList WHERE ServerName = ?)
+                BEGIN
+                    INSERT INTO dbo.ServerList (ServerName) VALUES (?);
+                END;
+                """,
+                (server_name, server_name),
+            )
+        except Exception:
+            conn.rollback()
+            conn.close()
+            return jsonify({"status": "error", "message": "Failed to insert server"}), 500
+
+    try:
+        cur.execute("SELECT TOP (1) ID FROM dbo.ServerList WHERE ServerName = ?;", (server_name,))
+        row = cur.fetchone()
+        conn.commit()
+    finally:
+        conn.close()
+
+    sid = int(row.ID) if row and getattr(row, "ID", None) is not None else None
+
+    return jsonify({
+        "status": "ok",
+        "id": sid,
+        "test_details": details  # optional: useful for UI
+    }), 201
+
+
 
 
 
 # --------------------------------------------------
 # DataSolveX Integration Hook
 # --------------------------------------------------
-def get_inventory_app(shared_secret_key: str | None = None):
+def get_inventory_app(shared_secret_key=None):
     """Return the inventory Flask app for mounting under /inventory-mgmt.
 
-    - Uses the same secret key as the main DataSolveX app so the `session`
-      cookie can be read consistently.
+    - Uses the same secret key as the main DataSolveX app so the Flask session cookie
+      can be read consistently.
     - Protects inventory routes behind the DataSolveX login session.
+    - Adds server-side page logging (all pages) into dbo.page_access_logs.
     """
+
     if shared_secret_key:
         app.secret_key = shared_secret_key
 
-    # Add a login-gate once (idempotent)
+    # -------------------------
+    # Login gate (idempotent)
+    # -------------------------
     if not getattr(app, "_datasolvex_login_gate", False):
         from flask import session as _session
 
         @app.before_request
         def _require_login():
-            # Allow static assets.
-            # When mounted under /inventory-mgmt, Flask may see paths like
-            #   /inventory-mgmt/static/... or /static/...
-            # depending on how URLs were built and how SCRIPT_NAME is applied.
-            if request.endpoint == "static":
+            path = request.path or "/"
+
+            # Allow static assets for inventory
+            if path.startswith("/static/") or "/static/" in path:
                 return None
-            if "/static/" in request.path:
-                return None
-            # Only allow if DataSolveX session exists
-            if _session.get("login_name"):
-                return None
-            return redirect("/login")
+
+            # If the main portal marks login, enforce it here.
+            # Your portal uses session['login_name'] as the login signal.
+            if not _session.get("login_name"):
+                return redirect("/")
+
+            return None
 
         app._datasolvex_login_gate = True
+
+    # -------------------------
+    # Auto page logger (idempotent)
+    # -------------------------
+    if not getattr(app, "_datasolvex_auto_logger", False):
+        from flask import session as _session
+
+        def _should_log_inv_request() -> bool:
+            if request.method != "GET":
+                return False
+
+            path = request.path or "/"
+            if path.startswith("/static/") or "/static/" in path or path == "/favicon.ico":
+                return False
+
+            # Skip ajax/json calls
+            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                return False
+            if request.accept_mimetypes and request.accept_mimetypes.best == "application/json":
+                return False
+
+            return True
+
+        @app.before_request
+        def _inventory_auto_logger():
+            if not _should_log_inv_request():
+                return None
+
+            try:
+                user = _session.get("login_name", "anonymous")
+                ip = _client_ip()
+                page = _normalize_page_path(request.path)
+                now_ist = datetime.now(IST).replace(tzinfo=None)
+
+                conn = _get_helper_sql_conn()
+                cur = conn.cursor()
+
+                # Close previous open log for this session, if any
+                open_log_id = _session.get("open_log_id")
+                open_enter_iso = _session.get("open_log_enter_iso")
+                if open_log_id and open_enter_iso:
+                    try:
+                        open_enter_dt = datetime.fromisoformat(open_enter_iso)
+                        duration = (now_ist - open_enter_dt).total_seconds()
+                        cur.execute(
+                            """
+                            UPDATE dbo.page_access_logs
+                            SET exit_time = ?, duration_seconds = ?
+                            WHERE id = ? AND exit_time IS NULL
+                            """,
+                            (now_ist, duration, open_log_id),
+                        )
+                    except Exception:
+                        # Don't block logging if duration parse fails
+                        pass
+
+                # Insert current page row
+                cur.execute(
+                    """
+                    INSERT INTO dbo.page_access_logs (login_name, page, ip_address, enter_time, exit_time, duration_seconds)
+                    OUTPUT INSERTED.id
+                    VALUES (?, ?, ?, ?, NULL, NULL)
+                    """,
+                    (user, page, ip, now_ist),
+                )
+                new_id = cur.fetchone()[0]
+                conn.commit()
+                conn.close()
+
+                _session["open_log_id"] = int(new_id)
+                _session["open_log_enter_iso"] = now_ist.isoformat()
+
+            except Exception as e:
+                print(f"[INV_AUTO_PAGE_LOGGER] failed: {e}")
+
+            return None
+
+        app._datasolvex_auto_logger = True
 
     return app

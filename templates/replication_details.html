@@ -87,83 +87,8 @@
 
 
     <!-- Filtering logic (unchanged) -->
-    <script>
-      // Jinja injects these as plain numbers
-      const PUB_COL_INDEX = Number('{{ pub_col_index }}');
-      const ART_COL_INDEX = Number('{{ art_col_index }}');
-
-      function filterTable() {
-        const pubFilter = document
-          .getElementById("publication_name_filter")
-          .value.toLowerCase();
-        const artFilter = document
-          .getElementById("article_filter")
-          .value.toLowerCase();
-        const table = document.getElementById("sql_table");
-        if (!table) return;
-
-        const rows = table.getElementsByTagName("tr");
-
-        // start from 1 to skip header
-        for (let i = 1; i < rows.length; i++) {
-          const cells = rows[i].getElementsByTagName("td");
-          const tdPub = cells[PUB_COL_INDEX];
-          const tdArt = cells[ART_COL_INDEX];
-
-          let showRow = true;
-
-          if (
-            tdPub &&
-            pubFilter &&
-            tdPub.innerText.toLowerCase().indexOf(pubFilter) === -1
-          ) {
-            showRow = false;
-          }
-
-          if (
-            tdArt &&
-            artFilter &&
-            tdArt.innerText.toLowerCase().indexOf(artFilter) === -1
-          ) {
-            showRow = false;
-          }
-
-          rows[i].style.display = showRow ? "" : "none";
-        }
-      }
-    </script>
-
-    <!-- Exit logging -->
-    <script>
-      window.addEventListener('beforeunload', function () {
-        const data = JSON.stringify({
-          page: window.location.pathname,
-          timestamp: new Date().toISOString()
-        });
-
-        const blob = new Blob([data], { type: 'application/json' });
-        navigator.sendBeacon('/log-exit', blob);
-      });
-    </script>
-
     <!-- Entry logging -->
-    <script>
-      document.addEventListener('DOMContentLoaded', function () {
-        const now = new Date().toISOString();
-        const page = window.location.pathname;
-
-        fetch('/log-entry', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            page: page,
-            timestamp: now
-          })
-        });
-      });
-    </script>
+      <script src="/static/js/page_exit_beacon.js" defer></script>
 </body>
 
 </html>

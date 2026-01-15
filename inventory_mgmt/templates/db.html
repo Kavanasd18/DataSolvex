@@ -102,15 +102,41 @@
 </head>
 
 <body class="inventory-body">
-  {% set breadcrumb = [
-  {'label': 'SQL Server Main', 'href': '/sqlserver_main'},
-  {'label': 'Inventory Management', 'href': url_for('index')},
-  {'label': server.name, 'href': url_for('server_detail', server_id=server.id)},
-  {'label': db.database_name, 'active': True}
-  ] %}
+  {% set _from = request.args.get('from_page') %}
+  {% set _from_env = request.args.get('from_env') %}
+  {% if _from == 'env' %}
+    {% set breadcrumb = [
+      {'label': 'SQL Server Main', 'href': '/sqlserver_main'},
+      {'label': 'Environment Summary', 'href': url_for('environments_summary')},
+      {'label': server.name, 'href': url_for('server_detail', server_id=server.id, from_page='env')},
+      {'label': db.database_name, 'active': True}
+    ] %}
+  {% elif _from == 'inventory' and _from_env == 'env' %}
+    {% set breadcrumb = [
+      {'label': 'SQL Server Main', 'href': '/sqlserver_main'},
+      {'label': 'Environment Summary', 'href': url_for('environments_summary')},
+      {'label': 'Inventory Management', 'href': url_for('index', from_env='env')},
+      {'label': server.name, 'href': url_for('server_detail', server_id=server.id, from_page='inventory', from_env='env')},
+      {'label': db.database_name, 'active': True}
+    ] %}
+  {% else %}
+    {% set breadcrumb = [
+      {'label': 'SQL Server Main', 'href': '/sqlserver_main'},
+      {'label': 'Inventory Management', 'href': url_for('index')},
+      {'label': server.name, 'href': url_for('server_detail', server_id=server.id)},
+      {'label': db.database_name, 'active': True}
+    ] %}
+  {% endif %}
 
+  {% set _qp = '' %}
+  {% if request.args.get('from_page') %}
+    {% set _qp = '?from_page=' + request.args.get('from_page') %}
+    {% if request.args.get('from_env') %}
+      {% set _qp = _qp + '&from_env=' + request.args.get('from_env') %}
+    {% endif %}
+  {% endif %}
   {% set breadcrumb_actions %}
-  <a href="{{ url_for('db_objects', server_id=server.id, db_name=db.database_name) }}" class="breadcrumb-action-link">
+  <a href="{{ url_for('db_objects', server_id=server.id, db_name=db.database_name) }}{{ _qp }}" class="breadcrumb-action-link">
     Object dashboard
   </a>
   {% endset %}
@@ -257,6 +283,19 @@
           <div class="info-label">Isolation level</div>
           <div class="info-value">{{ db.isolation_level_desc }}</div>
         </div>
+        <div class="info-item">
+          <div class="info-label">Query Store</div>
+          <div class="info-value">
+            {% if query_store and query_store.state %}
+              {{ query_store.state }}
+              {% if query_store.capture_mode %}
+                (Mode: {{ query_store.capture_mode }})
+              {% endif %}
+            {% else %}
+              Disabled / Unknown
+            {% endif %}
+          </div>
+        </div>
       </div>
     </div>
 
@@ -269,7 +308,7 @@
           <div class="info-label">Database size</div>
           <div class="info-value">
             {% set total_mb = (db.data_size_mb or 0) + (db.log_size_mb or 0) %}
-            {{ "%.2f"|format(total_mb / 1024) }} GB
+            {{ "%.2f"|format(total_mb) }} GB
           </div>
         </div>
 
@@ -312,17 +351,32 @@
       <div class="info-grid">
         <div class="info-item">
           <div class="info-label">Last full backup</div>
-          <div class="info-value">{{ db.last_full_backup|fmt_dt if db.last_full_backup else 'N/A' }}</div>
+          <div class="info-value">
+            {{ db.last_full_backup|fmt_dt if db.last_full_backup else 'N/A' }}
+            {% if backup_sizes and backup_sizes.full.size_mb %}
+              &nbsp;·&nbsp;<small>{{ backup_sizes.full.size_mb }} MB</small>
+            {% endif %}
+          </div>
         </div>
 
         <div class="info-item">
           <div class="info-label">Last diff backup</div>
-          <div class="info-value">{{ db.last_diff_backup|fmt_dt if db.last_diff_backup else 'N/A' }}</div>
+          <div class="info-value">
+            {{ db.last_diff_backup|fmt_dt if db.last_diff_backup else 'N/A' }}
+            {% if backup_sizes and backup_sizes.diff.size_mb %}
+              &nbsp;·&nbsp;<small>{{ backup_sizes.diff.size_mb }} MB</small>
+            {% endif %}
+          </div>
         </div>
 
         <div class="info-item">
           <div class="info-label">Last log backup</div>
-          <div class="info-value">{{ db.last_log_backup|fmt_dt if db.last_log_backup else 'N/A' }}</div>
+          <div class="info-value">
+            {{ db.last_log_backup|fmt_dt if db.last_log_backup else 'N/A' }}
+            {% if backup_sizes and backup_sizes.log.size_mb %}
+              &nbsp;·&nbsp;<small>Size : {{ backup_sizes.log.size_mb }} MB</small>
+            {% endif %}
+          </div>
         </div>
 
         <div class="info-item">
@@ -332,6 +386,18 @@
             Yes ({{ db.availability_group_name }})
             {% else %}
             No
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="info-item">
+          <div class="info-label">AG commit mode</div>
+          <div class="info-value">
+            {% if ag_info and ag_info.availability_mode %}
+              {{ ag_info.availability_mode }}
+              {% if ag_info.sync_state %} ({{ ag_info.sync_state }}){% endif %}
+            {% else %}
+              N/A
             {% endif %}
           </div>
         </div>
@@ -356,7 +422,7 @@
         </div>
 
         <div class="info-item">
-          <div class="info-label">RPO (min since last log backup)</div>
+          <div class="info-label">RPO </div>
           <div class="info-value">
             {% if db.rpo_minutes is not none %}
             {{ db.rpo_minutes }} min
